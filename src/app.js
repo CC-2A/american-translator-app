@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026.06.13-fr-reply-audio';
+const CACHE_VERSION = '2026.06.13-bilingual-results';
 
 const contexts = {
   restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter/i, replies: ['Could you repeat slowly, please?', 'I would like this one, please.', 'Can we have the check, please?'] },
@@ -11,16 +11,55 @@ const contexts = {
   payment: { label: 'Paiement', emoji: '💳', words: /pay|card|cash|apple pay|google pay|receipt|declined|tip|charge|payment/i, replies: ['Can I pay by card?', 'Could I have the receipt?', 'Can we try again?'] },
 };
 
-const offlinePairs = [
-  [/passport|customs|border|visa|purpose/i, 'Il demande votre passeport ou des informations de douane.', contexts.border.replies],
-  [/restaurant|menu|order|check|bill|table/i, 'Il parle du menu, de votre commande ou de l’addition.', contexts.restaurant.replies],
-  [/hotel|room|reservation|check in|luggage/i, 'Il parle de votre hôtel, de votre chambre ou de votre réservation.', contexts.hotel.replies],
-  [/car|rental|parking|gas|insurance/i, 'Il parle de la voiture, du parking, de l’essence ou de la location.', contexts.car.replies],
-  [/emergency|hurt|doctor|hospital|ambulance/i, 'Il s’agit peut-être d’une urgence ou d’un problème médical.', contexts.emergency.replies],
-  [/where|direction|subway|bus|airport|address/i, 'Il donne ou demande une direction.', contexts.direction.replies],
-  [/pay|card|cash|receipt|declined|payment/i, 'Il parle du paiement, de la carte ou du reçu.', contexts.payment.replies],
-  [/price|size|store|shop|return|buy/i, 'Il parle d’un achat en magasin.', contexts.store.replies],
+
+const replyFrenchTranslations = new Map([
+  ['Could you repeat slowly, please?', 'Pouvez-vous répéter lentement, s’il vous plaît ?'],
+  ['I would like this one, please.', 'Je voudrais celui-ci, s’il vous plaît.'],
+  ['Can we have the check, please?', 'Pouvons-nous avoir l’addition, s’il vous plaît ?'],
+  ['I have a reservation.', 'J’ai une réservation.'],
+  ['Could you help me, please?', 'Pouvez-vous m’aider, s’il vous plaît ?'],
+  ['What time is check-out?', 'À quelle heure faut-il libérer la chambre ?'],
+  ['I rented this car.', 'J’ai loué cette voiture.'],
+  ['I need help with the car.', 'J’ai besoin d’aide avec la voiture.'],
+  ['Where can I park?', 'Où puis-je me garer ?'],
+  ['How much is it?', 'Combien ça coûte ?'],
+  ['Do you have another size?', 'Avez-vous une autre taille ?'],
+  ['Can I get a receipt?', 'Puis-je avoir un reçu ?'],
+  ['Yes, of course.', 'Oui, bien sûr.'],
+  ['I am a tourist.', 'Je suis touriste.'],
+  ['I need help now, please.', 'J’ai besoin d’aide maintenant, s’il vous plaît.'],
+  ['Please call an ambulance.', 'Appelez une ambulance, s’il vous plaît.'],
+  ['I do not feel well.', 'Je ne me sens pas bien.'],
+  ['Can you show me on the map?', 'Pouvez-vous me montrer sur la carte ?'],
+  ['Is it far from here?', 'Est-ce loin d’ici ?'],
+  ['Which way should I go?', 'Par où dois-je aller ?'],
+  ['Can I pay by card?', 'Puis-je payer par carte ?'],
+  ['Could I have the receipt?', 'Puis-je avoir le reçu ?'],
+  ['Can we try again?', 'Pouvons-nous réessayer ?'],
+  ['Yes, here it is.', 'Oui, le voici.'],
+]);
+
+const enToFrDictionary = [
+  [/can i see your driver[’']?s license|driver[’']?s license|driver license|driver.*license/i, 'Puis-je voir votre permis de conduire ?'],
+  [/passport|customs|border|visa|purpose/i, 'Il demande votre passeport ou des informations de douane.'],
+  [/restaurant|menu|order|check|bill|table/i, 'Il parle du menu, de votre commande ou de l’addition.'],
+  [/hotel|room|reservation|check in|luggage/i, 'Il parle de votre hôtel, de votre chambre ou de votre réservation.'],
+  [/car|rental|parking|gas|insurance/i, 'Il parle de la voiture, du parking, de l’essence ou de la location.'],
+  [/emergency|hurt|doctor|hospital|ambulance/i, 'Il s’agit peut-être d’une urgence ou d’un problème médical.'],
+  [/where|direction|subway|bus|airport|address/i, 'Il donne ou demande une direction.'],
+  [/pay|card|cash|receipt|declined|payment/i, 'Il parle du paiement, de la carte ou du reçu.'],
+  [/price|size|store|shop|return|buy/i, 'Il parle d’un achat en magasin.'],
 ];
+
+function normalizeSuggestions(replies = []) {
+  return replies.slice(0, 3).map((reply) => {
+    if (typeof reply === 'string') return { americanEnglishText: reply, frenchText: replyFrenchTranslations.get(reply) || 'Traduction française à confirmer.' };
+    return {
+      americanEnglishText: reply.americanEnglishText || reply.text || '',
+      frenchText: reply.frenchText || replyFrenchTranslations.get(reply.americanEnglishText || reply.text || '') || 'Traduction française à confirmer.',
+    };
+  });
+}
 
 const frToEnDictionary = [
   [/passeport/i, 'Yes, of course. Here is my passport.'],
@@ -39,7 +78,7 @@ const $ = (selector) => document.querySelector(selector);
 const elements = {
   homeScreen: $('#homeScreen'), listenPanel: $('#listenPanel'), speakPanel: $('#speakPanel'), contextGrid: $('#contextGrid'),
   sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
-  answerText: $('#answerText'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'),
+  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'),
 };
 
 function showMode(mode) {
@@ -59,7 +98,10 @@ async function requestTranslation(text, direction, context = state.activeContext
   const languages = direction === 'fr-en' ? { source: 'fr-FR', target: 'en-US' } : { source: 'en-US', target: 'fr-FR' };
   try {
     const response = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, direction, context, ...languages }) });
-    if (response.ok) return { ...(await response.json()), simulated: false };
+    if (response.ok) {
+      const payload = await response.json();
+      return { ...payload, simulated: payload.mode === 'local' };
+    }
   } catch (error) {
     console.info('API indisponible, utilisation du secours local.', error);
   }
@@ -67,12 +109,35 @@ async function requestTranslation(text, direction, context = state.activeContext
 }
 
 function offlineTranslate(text, direction, context) {
+  const sourceLanguage = direction === 'fr-en' ? 'fr-FR' : 'en-US';
+  const targetLanguage = direction === 'fr-en' ? 'en-US' : 'fr-FR';
+  const fallbackSuggestions = normalizeSuggestions(contexts[context]?.replies || contexts.restaurant.replies);
+
   if (direction === 'en-fr') {
-    const match = offlinePairs.find(([pattern]) => pattern.test(text));
-    return { translation: match?.[1] || `Mode secours local : phrase anglaise détectée, traduction approximative.`, replies: match?.[2] || contexts[context].replies, simulated: true };
+    const match = enToFrDictionary.find(([pattern]) => pattern.test(text));
+    return {
+      sourceText: text,
+      sourceLanguage,
+      targetLanguage,
+      frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.',
+      americanEnglishText: text,
+      suggestions: fallbackSuggestions,
+      mode: 'local',
+      simulated: true,
+    };
   }
+
   const match = frToEnDictionary.find(([pattern]) => pattern.test(text));
-  return { translation: match?.[1] || `Please help me with this: ${text}`, replies: contexts[context].replies, simulated: true };
+  return {
+    sourceText: text,
+    sourceLanguage,
+    targetLanguage,
+    frenchText: text,
+    americanEnglishText: match?.[1] || `Please help me with this: ${text}`,
+    suggestions: fallbackSuggestions,
+    mode: 'local',
+    simulated: true,
+  };
 }
 
 async function translateIncoming() {
@@ -82,11 +147,11 @@ async function translateIncoming() {
   renderContexts();
   updateStatus('Traduction en cours…');
   const result = await requestTranslation(text, 'en-fr', state.activeContext);
-  state.lastTranslation = result.translation;
-  elements.heardEnglish.textContent = text;
-  elements.translationOutput.textContent = result.translation;
+  state.lastTranslation = result.frenchText;
+  elements.heardEnglish.textContent = `🇺🇸 ${result.americanEnglishText}`;
+  elements.translationOutput.textContent = `🇫🇷 ${result.frenchText}`;
   elements.copyTranslation.disabled = false;
-  renderReplies(result.replies);
+  renderReplies(result.suggestions);
   updateStatus(result.simulated ? 'Mode secours local : traduction limitée, sans IA.' : 'Traduction IA prête.');
 }
 
@@ -95,8 +160,9 @@ async function translateAnswer() {
   if (!text) return focusWithStatus(elements.answerText, 'Dictez ou écrivez votre réponse en français.');
   updateStatus('Traduction en cours…');
   const result = await requestTranslation(text, 'fr-en', state.activeContext);
-  state.lastAnswer = result.translation;
-  elements.answerOutput.textContent = result.translation;
+  state.lastAnswer = result.americanEnglishText;
+  elements.answerFrenchOutput.textContent = `🇫🇷 ${result.frenchText}`;
+  elements.answerOutput.textContent = `🇺🇸 ${result.americanEnglishText}`;
   elements.speakAnswer.disabled = false;
   elements.copyAnswer.disabled = false;
   updateStatus(result.simulated ? 'Mode secours local : anglais américain généré sans IA. Appuyez sur FAIRE ÉCOUTER.' : 'Anglais américain prêt. Appuyez sur FAIRE ÉCOUTER.');
@@ -116,23 +182,23 @@ function renderContexts() {
 
 function renderReplies(replies) {
   elements.replyList.innerHTML = '';
-  replies.slice(0, 3).forEach((reply) => {
+  normalizeSuggestions(replies).forEach((reply) => {
     const card = document.createElement('article');
     card.className = 'reply-card';
     const phrase = document.createElement('p');
-    phrase.textContent = reply;
+    phrase.innerHTML = `<span class="language-line english-line">🇺🇸 ${reply.americanEnglishText}</span><span class="language-line">🇫🇷 ${reply.frenchText}</span>`;
     const actions = document.createElement('div');
     actions.className = 'mini-actions';
     const listen = document.createElement('button');
     listen.className = 'primary';
     listen.type = 'button';
-    listen.textContent = '🔊 Audio';
-    listen.addEventListener('click', () => speak(reply, 'en-US'));
+    listen.textContent = '🔊 Faire écouter';
+    listen.addEventListener('click', () => speak(reply.americanEnglishText, 'en-US'));
     const copy = document.createElement('button');
     copy.className = 'secondary';
     copy.type = 'button';
     copy.textContent = 'Copier';
-    copy.addEventListener('click', () => copyText(reply));
+    copy.addEventListener('click', () => copyText(`${reply.americanEnglishText} / ${reply.frenchText}`));
     actions.append(listen, copy);
     card.append(phrase, actions);
     elements.replyList.append(card);
@@ -169,8 +235,8 @@ async function copyText(text) {
 
 function restartListen() {
   elements.sourceText.value = '';
-  elements.heardEnglish.textContent = '—';
-  elements.translationOutput.textContent = 'La traduction apparaîtra ici.';
+  elements.heardEnglish.textContent = '🇺🇸 —';
+  elements.translationOutput.textContent = '🇫🇷 La traduction apparaîtra ici.';
   elements.copyTranslation.disabled = true;
   state.lastTranslation = '';
   updateStatus('Prêt.');
@@ -179,7 +245,8 @@ function restartListen() {
 
 function restartSpeak() {
   elements.answerText.value = '';
-  elements.answerOutput.textContent = 'La phrase anglaise apparaîtra ici.';
+  elements.answerFrenchOutput.textContent = '🇫🇷 La phrase française apparaîtra ici.';
+  elements.answerOutput.textContent = '🇺🇸 La phrase anglaise apparaîtra ici.';
   elements.speakAnswer.disabled = true;
   elements.copyAnswer.disabled = true;
   state.lastAnswer = '';
