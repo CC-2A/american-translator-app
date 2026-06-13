@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026.06.13-terrain';
+const CACHE_VERSION = '2026.06.13-fr-reply-audio';
 
 const contexts = {
   restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter/i, replies: ['Could you repeat slowly, please?', 'I would like this one, please.', 'Can we have the check, please?'] },
@@ -25,7 +25,7 @@ const offlinePairs = [
 const frToEnDictionary = [
   [/passeport/i, 'Yes, of course. Here is my passport.'],
   [/touriste|vacances/i, 'I am visiting as a tourist.'],
-  [/addition|payer|carte/i, 'Can I pay by card, please?'],
+  [/voudrais payer l[’']addition|payer l[’']addition|addition.*s[’']il vous plaît|addition|payer|carte/i, 'I’d like to pay the bill, please.'],
   [/urgence|aide/i, 'I need help now, please.'],
   [/médecin|hôpital|mal/i, 'I need a doctor, please.'],
   [/chemin|adresse|où/i, 'Can you show me on the map, please?'],
@@ -33,16 +33,17 @@ const frToEnDictionary = [
   [/répéter|lentement/i, 'Could you repeat slowly, please?'],
 ];
 
-const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null };
+const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null, currentMode: 'home' };
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   homeScreen: $('#homeScreen'), listenPanel: $('#listenPanel'), speakPanel: $('#speakPanel'), contextGrid: $('#contextGrid'),
   sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
-  answerText: $('#answerText'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'),
+  answerText: $('#answerText'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'),
 };
 
 function showMode(mode) {
+  state.currentMode = mode;
   elements.homeScreen.classList.toggle('hidden', mode !== 'home');
   elements.listenPanel.classList.toggle('hidden', mode !== 'listen');
   elements.speakPanel.classList.toggle('hidden', mode !== 'speak');
@@ -55,8 +56,9 @@ function detectContext(text = '') {
 }
 
 async function requestTranslation(text, direction, context = state.activeContext) {
+  const languages = direction === 'fr-en' ? { source: 'fr-FR', target: 'en-US' } : { source: 'en-US', target: 'fr-FR' };
   try {
-    const response = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, direction, context }) });
+    const response = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, direction, context, ...languages }) });
     if (response.ok) return { ...(await response.json()), simulated: false };
   } catch (error) {
     console.info('API indisponible, utilisation du secours local.', error);
@@ -97,7 +99,7 @@ async function translateAnswer() {
   elements.answerOutput.textContent = result.translation;
   elements.speakAnswer.disabled = false;
   elements.copyAnswer.disabled = false;
-  updateStatus(result.simulated ? 'Mode secours local : phrase simple générée sans IA.' : 'Réponse IA prête.');
+  updateStatus(result.simulated ? 'Mode secours local : anglais américain généré sans IA. Appuyez sur FAIRE ÉCOUTER.' : 'Anglais américain prêt. Appuyez sur FAIRE ÉCOUTER.');
 }
 
 function renderContexts() {
@@ -186,7 +188,10 @@ function restartSpeak() {
 }
 
 function focusWithStatus(element, message) { updateStatus(message); element.focus(); }
-function updateStatus(message) { elements.status.textContent = message; }
+function updateStatus(message) {
+  if (elements.status) elements.status.textContent = message;
+  if (elements.answerStatus) elements.answerStatus.textContent = message;
+}
 
 $('#openListenMode').addEventListener('click', () => showMode('listen'));
 $('#openSpeakMode').addEventListener('click', () => showMode('speak'));
