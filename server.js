@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const port = process.env.PORT || 4173;
 const root = process.cwd();
@@ -79,6 +80,7 @@ const enToFrDictionary = [
 ];
 
 const frToEnDictionary = [
+  [/bonjour.*comment.*allez|comment.*allez.*vous/i, 'Hi, how are you doing?', 'Hello, how are you?'],
   [/payer.*addition|addition/i, 'Can I get the check, please?', 'I would like to pay the bill, please.'],
   [/toilettes?|wc/i, 'Where’s the restroom?', 'Where are the toilets?'],
   [/payer.*carte|carte/i, 'Can I pay by card?', 'I would like to pay by card.'],
@@ -110,11 +112,39 @@ async function readBody(request) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 
+const parasitePrefixPatterns = [
+  /^please\s+help\s+me\s+with\s+this\s*:?\s*/i,
+  /^help\s+me\s+with\s+this\s*:?\s*/i,
+  /^translate\s+this\s*:?\s*/i,
+  /^say\s+this\s*:?\s*/i,
+  /^the\s+translation\s+is\s*:?\s*/i,
+  /^here\s+is\s+the\s+translation\s*:?\s*/i,
+  /^in\s+american\s+english\s*:?\s*/i,
+  /^(?:assistant|ai|instruction|response|answer|output)\s*:?\s*/i,
+];
+
+export function cleanTranslationText(text = '') {
+  let cleaned = String(text).trim();
+  let previous = '';
+  while (cleaned && cleaned !== previous) {
+    previous = cleaned;
+    cleaned = cleaned.trim().replace(/^[\s"'“”‘’`]+|[\s"'“”‘’`]+$/g, '').trim();
+    parasitePrefixPatterns.forEach((pattern) => {
+      cleaned = cleaned.replace(pattern, '').trim();
+    });
+    cleaned = cleaned.replace(/^[:\-–—]+\s*/, '').trim();
+  }
+  return cleaned;
+}
+
 function buildSuggestions(context) {
-  return (contextReplies[context] || contextReplies.restaurant).map((americanEnglishText) => ({
-    americanEnglishText,
-    frenchText: replyFrenchTranslations.get(americanEnglishText) || 'Traduction française à confirmer.',
-  }));
+  return (contextReplies[context] || contextReplies.restaurant).map((americanEnglishText) => {
+    const cleanAmericanEnglishText = cleanTranslationText(americanEnglishText);
+    return {
+      americanEnglishText: cleanAmericanEnglishText,
+      frenchText: replyFrenchTranslations.get(cleanAmericanEnglishText) || 'Traduction française à confirmer.',
+    };
+  });
 }
 
 function translateLocal(text, direction, context) {
@@ -124,11 +154,11 @@ function translateLocal(text, direction, context) {
 
   if (direction === 'en-fr') {
     const match = enToFrDictionary.find(([pattern]) => pattern.test(text));
-    return { ...base, frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.', frenchMeaning: match?.[1] || 'Sens approximatif détecté localement.', literalEnglishText: text, americanEnglishText: text };
+    return { ...base, frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.', frenchMeaning: match?.[1] || 'Sens approximatif détecté localement.', literalEnglishText: text, americanEnglishText: cleanTranslationText(text) };
   }
 
   const match = frToEnDictionary.find(([pattern]) => pattern.test(text));
-  return { ...base, frenchText: text, frenchMeaning: text, literalEnglishText: match?.[2] || text, americanEnglishText: match?.[1] || `Can you help me with this, please?` };
+  return { ...base, frenchText: text, frenchMeaning: text, literalEnglishText: match?.[2] || text, americanEnglishText: cleanTranslationText(match?.[1] || text) };
 }
 
 async function handleTranslate(request, response) {
@@ -138,8 +168,9 @@ async function handleTranslate(request, response) {
     return;
   }
 
+  const cleanText = direction === 'fr-en' ? cleanTranslationText(text) : text.trim();
   // Instructions pour brancher une IA serveur : aiTranslationInstructions impose un anglais américain oral, court, poli, pratique, contextuel et non littéral.
-  sendJson(response, 200, translateLocal(text.trim(), direction, context));
+  sendJson(response, 200, translateLocal(cleanText, direction, context));
 }
 
 async function serveStatic(request, response) {
@@ -163,7 +194,7 @@ async function serveStatic(request, response) {
   }
 }
 
-createServer(async (request, response) => {
+const server = createServer(async (request, response) => {
   try {
     if (request.method === 'POST' && request.url === '/api/translate') {
       await handleTranslate(request, response);
@@ -174,6 +205,12 @@ createServer(async (request, response) => {
     console.error(error);
     sendJson(response, 500, { error: 'Erreur serveur.' });
   }
-}).listen(port, () => {
-  console.log(`US Translator disponible sur http://localhost:${port}`);
 });
+
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  server.listen(port, () => {
+    console.log(`US Translator disponible sur http://localhost:${port}`);
+  });
+}
+
+export { buildSuggestions, translateLocal };
