@@ -13,40 +13,56 @@ const mimeTypes = {
   '.svg': 'image/svg+xml; charset=utf-8',
 };
 
+const aiTranslationInstructions = [
+  'Return spoken American English.',
+  'Use a short, polite, practical sentence.',
+  'Do not translate literally.',
+  'Do not use British English.',
+  'Do not use formal classroom English.',
+  'Adapt the wording to the context.',
+].join(' ');
+
 const contextReplies = {
-  restaurant: ['Could you repeat slowly, please?', 'I would like this one, please.', 'Can we have the check, please?'],
-  hotel: ['I have a reservation.', 'Could you help me, please?', 'What time is check-out?'],
-  car: ['I rented this car.', 'I need help with the car.', 'Where can I park?'],
-  store: ['How much is it?', 'Do you have another size?', 'Can I get a receipt?'],
-  border: ['Yes, of course.', 'I am a tourist.', 'Could you repeat slowly, please?'],
-  emergency: ['I need help now, please.', 'Please call an ambulance.', 'I do not feel well.'],
-  direction: ['Can you show me on the map?', 'Is it far from here?', 'Which way should I go?'],
-  payment: ['Can I pay by card?', 'Could I have the receipt?', 'Can we try again?'],
+  restaurant: ['Could you say that again, please?', 'Can I get this one, please?', 'Can I get the check, please?'],
+  hotel: ['I have a reservation.', 'Can you help me, please?', 'What time is check-out?'],
+  car: ['I need to pick up my rental car.', 'Where can I get gas?', 'Where’s the parking lot?'],
+  store: ['How much is this?', 'Do you have this in another size?', 'Can I get a receipt?'],
+  border: ['Sure. Here’s my passport.', 'I don’t understand.', 'Could you speak slowly, please?'],
+  emergency: ['I need help.', 'Please call an ambulance.', 'I’m hurt.'],
+  direction: ['Where’s the exit?', 'Should I go left or right?', 'Do I go straight ahead?'],
+  payment: ['Can I pay by card?', 'Can I pay cash?', 'Can I get a receipt?'],
 };
 
 const replyFrenchTranslations = new Map([
-  ['Could you repeat slowly, please?', 'Pouvez-vous répéter lentement, s’il vous plaît ?'],
-  ['I would like this one, please.', 'Je voudrais celui-ci, s’il vous plaît.'],
-  ['Can we have the check, please?', 'Pouvons-nous avoir l’addition, s’il vous plaît ?'],
+  ['Could you say that again, please?', 'Pouvez-vous répéter, s’il vous plaît ?'],
+  ['Could you repeat that slowly, please?', 'Pouvez-vous répéter lentement, s’il vous plaît ?'],
+  ['Could you speak slowly, please?', 'Pouvez-vous parler lentement, s’il vous plaît ?'],
+  ['Can I get this one, please?', 'Je voudrais celui-ci, s’il vous plaît.'],
+  ['Can I get the check, please?', 'Je voudrais payer l’addition, s’il vous plaît.'],
   ['I have a reservation.', 'J’ai une réservation.'],
-  ['Could you help me, please?', 'Pouvez-vous m’aider, s’il vous plaît ?'],
+  ['Can you help me, please?', 'Pouvez-vous m’aider, s’il vous plaît ?'],
   ['What time is check-out?', 'À quelle heure faut-il libérer la chambre ?'],
-  ['I rented this car.', 'J’ai loué cette voiture.'],
+  ['I need to pick up my rental car.', 'Je dois récupérer ma voiture de location.'],
+  ['Where can I get gas?', 'Où puis-je trouver de l’essence ?'],
   ['I need help with the car.', 'J’ai besoin d’aide avec la voiture.'],
-  ['Where can I park?', 'Où puis-je me garer ?'],
-  ['How much is it?', 'Combien ça coûte ?'],
+  ['Where’s the parking lot?', 'Où est le parking ?'],
+  ['How much is this?', 'Combien ça coûte ?'],
   ['Do you have another size?', 'Avez-vous une autre taille ?'],
   ['Can I get a receipt?', 'Puis-je avoir un reçu ?'],
   ['Yes, of course.', 'Oui, bien sûr.'],
-  ['I am a tourist.', 'Je suis touriste.'],
-  ['I need help now, please.', 'J’ai besoin d’aide maintenant, s’il vous plaît.'],
+  ['Sure. Here’s my passport.', 'Oui, bien sûr. Voici mon passeport.'],
+  ['I don’t understand.', 'Je ne comprends pas.'],
+  ['I’m visiting as a tourist.', 'Je suis touriste.'],
+  ['I need help.', 'J’ai besoin d’aide.'],
   ['Please call an ambulance.', 'Appelez une ambulance, s’il vous plaît.'],
-  ['I do not feel well.', 'Je ne me sens pas bien.'],
+  ['I’m hurt.', 'Je suis blessé.'],
   ['Can you show me on the map?', 'Pouvez-vous me montrer sur la carte ?'],
   ['Is it far from here?', 'Est-ce loin d’ici ?'],
-  ['Which way should I go?', 'Par où dois-je aller ?'],
+  ['Should I go left or right?', 'Je dois aller à gauche ou à droite ?'],
+  ['Do I go straight ahead?', 'Je dois aller tout droit ?'],
   ['Can I pay by card?', 'Puis-je payer par carte ?'],
-  ['Could I have the receipt?', 'Puis-je avoir le reçu ?'],
+  ['Can I get a receipt?', 'Puis-je avoir le reçu ?'],
+  ['Can I pay cash?', 'Puis-je payer en espèces ?'],
   ['Can we try again?', 'Pouvons-nous réessayer ?'],
 ]);
 
@@ -63,14 +79,24 @@ const enToFrDictionary = [
 ];
 
 const frToEnDictionary = [
-  [/passeport/i, 'Yes, of course. Here is my passport.'],
-  [/touriste|vacances/i, 'I am visiting as a tourist.'],
-  [/voudrais payer l[’']addition|payer l[’']addition|addition.*s[’']il vous plaît|addition|payer|carte/i, 'I’d like to pay the bill, please.'],
-  [/urgence|aide/i, 'I need help now, please.'],
-  [/médecin|hôpital|mal/i, 'I need a doctor, please.'],
-  [/chemin|adresse|où/i, 'Can you show me on the map, please?'],
-  [/hôtel|réservation/i, 'I have a reservation.'],
-  [/répéter|lentement/i, 'Could you repeat slowly, please?'],
+  [/payer.*addition|addition/i, 'Can I get the check, please?', 'I would like to pay the bill, please.'],
+  [/toilettes?|wc/i, 'Where’s the restroom?', 'Where are the toilets?'],
+  [/payer.*carte|carte/i, 'Can I pay by card?', 'I would like to pay by card.'],
+  [/fran[cç]ais.*parle pas bien anglais|parle pas bien anglais/i, 'I’m French. I don’t speak English very well.', 'I am French; I do not speak English very well.'],
+  [/r[ée]p[ée]ter.*lentement|lentement.*r[ée]p[ée]ter/i, 'Could you repeat that slowly, please?', 'Could you repeat slowly, please?'],
+  [/eau/i, 'Can I get some water, please?', 'I would like some water, please.'],
+  [/sortie/i, 'I’m looking for the exit.', 'I am looking for the exit.'],
+  [/voiture de location|r[ée]cup[ée]rer.*voiture/i, 'I need to pick up my rental car.', 'I need to retrieve my rental car.'],
+  [/parking/i, 'Where’s the parking lot?', 'Where is the parking?'],
+  [/pouvez-vous m[’']aider|aidez-moi|aide/i, 'Can you help me, please?', 'Could you help me?'],
+  [/passeport/i, 'Sure. Here’s my passport.', 'Yes, of course. Here is my passport.'],
+  [/touriste|vacances/i, 'I’m visiting as a tourist.', 'I am visiting as a tourist.'],
+  [/urgence/i, 'I need help.', 'I need help now, please.'],
+  [/ambulance/i, 'Please call an ambulance.', 'Please call an ambulance.'],
+  [/bless[ée]|mal/i, 'I’m hurt.', 'I am hurt.'],
+  [/m[ée]decin|h[ôo]pital/i, 'I need a doctor, please.', 'I need a doctor, please.'],
+  [/chemin|adresse|o[ùu]/i, 'Can you show me on the map, please?', 'Can you show me on the map, please?'],
+  [/h[ôo]tel|r[ée]servation/i, 'I have a reservation.', 'I have a reservation.'],
 ];
 
 function sendJson(response, status, payload) {
@@ -94,15 +120,15 @@ function buildSuggestions(context) {
 function translateLocal(text, direction, context) {
   const sourceLanguage = direction === 'fr-en' ? 'fr-FR' : 'en-US';
   const targetLanguage = direction === 'fr-en' ? 'en-US' : 'fr-FR';
-  const base = { sourceText: text, sourceLanguage, targetLanguage, suggestions: buildSuggestions(context), mode: 'local' };
+  const base = { sourceText: text, sourceLanguage, targetLanguage, suggestions: buildSuggestions(context), context, mode: 'local' };
 
   if (direction === 'en-fr') {
     const match = enToFrDictionary.find(([pattern]) => pattern.test(text));
-    return { ...base, frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.', americanEnglishText: text };
+    return { ...base, frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.', frenchMeaning: match?.[1] || 'Sens approximatif détecté localement.', literalEnglishText: text, americanEnglishText: text };
   }
 
   const match = frToEnDictionary.find(([pattern]) => pattern.test(text));
-  return { ...base, frenchText: text, americanEnglishText: match?.[1] || `Please help me with this: ${text}` };
+  return { ...base, frenchText: text, frenchMeaning: text, literalEnglishText: match?.[2] || text, americanEnglishText: match?.[1] || `Can you help me with this, please?` };
 }
 
 async function handleTranslate(request, response) {
@@ -112,7 +138,7 @@ async function handleTranslate(request, response) {
     return;
   }
 
-  // Structure prête pour brancher une IA serveur : la réponse garde toujours français + anglais américain.
+  // Instructions pour brancher une IA serveur : aiTranslationInstructions impose un anglais américain oral, court, poli, pratique, contextuel et non littéral.
   sendJson(response, 200, translateLocal(text.trim(), direction, context));
 }
 

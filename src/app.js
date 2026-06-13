@@ -1,40 +1,44 @@
-const CACHE_VERSION = '2026.06.13-bilingual-results';
+const CACHE_VERSION = '2026.06.13-natural-american-english';
 
 const contexts = {
-  restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter/i, replies: ['Could you repeat slowly, please?', 'I would like this one, please.', 'Can we have the check, please?'] },
-  hotel: { label: 'Hôtel', emoji: '🏨', words: /hotel|room|reservation|check in|check-in|luggage|breakfast|key|front desk/i, replies: ['I have a reservation.', 'Could you help me, please?', 'What time is check-out?'] },
-  car: { label: 'Voiture', emoji: '🚗', words: /car|rental|parking|gas|fuel|insurance|driver|license|toll|vehicle/i, replies: ['I rented this car.', 'I need help with the car.', 'Where can I park?'] },
-  store: { label: 'Magasin', emoji: '🛍️', words: /store|shop|price|size|buy|return|receipt|cashier|discount/i, replies: ['How much is it?', 'Do you have another size?', 'Can I get a receipt?'] },
-  border: { label: 'Police / Douane', emoji: '🛂', words: /passport|customs|border|police|officer|visa|purpose|stay|declare|id/i, replies: ['Yes, of course.', 'I am a tourist.', 'Could you repeat slowly, please?'] },
-  emergency: { label: 'Urgence', emoji: '🚑', words: /emergency|help|hurt|pain|doctor|hospital|ambulance|allergy|lost|stolen|accident/i, replies: ['I need help now, please.', 'Please call an ambulance.', 'I do not feel well.'] },
-  direction: { label: 'Direction', emoji: '🧭', words: /where|direction|address|street|subway|bus|train|airport|walk|far/i, replies: ['Can you show me on the map?', 'Is it far from here?', 'Which way should I go?'] },
-  payment: { label: 'Paiement', emoji: '💳', words: /pay|card|cash|apple pay|google pay|receipt|declined|tip|charge|payment/i, replies: ['Can I pay by card?', 'Could I have the receipt?', 'Can we try again?'] },
+  restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter|restroom/i, replies: ['Could you say that again, please?', 'Can I get this one, please?', 'Can I get the check, please?'] },
+  hotel: { label: 'Hôtel', emoji: '🏨', words: /hotel|room|reservation|check in|check-in|luggage|breakfast|key|key card|front desk/i, replies: ['I have a reservation.', 'Can you help me, please?', 'What time is check-out?'] },
+  car: { label: 'Voiture', emoji: '🚗', words: /car|rental|parking lot|parking|gas|fuel|insurance|driver|license|toll|vehicle/i, replies: ['I need to pick up my rental car.', 'Where can I get gas?', 'Where’s the parking lot?'] },
+  store: { label: 'Magasin', emoji: '🛍️', words: /store|shop|price|size|buy|return|receipt|card|cash|cashier|discount/i, replies: ['How much is this?', 'Do you have this in another size?', 'Can I get a receipt?'] },
+  border: { label: 'Police / Douane', emoji: '🛂', words: /passport|customs|border|police|officer|visa|purpose|stay|declare|id|driver|license/i, replies: ['Sure. Here’s my passport.', 'I don’t understand.', 'Could you speak slowly, please?'] },
+  emergency: { label: 'Urgence', emoji: '🚑', words: /emergency|help|hurt|pain|doctor|hospital|ambulance|allergy|lost|stolen|accident/i, replies: ['I need help.', 'Please call an ambulance.', 'I’m hurt.'] },
+  direction: { label: 'Direction', emoji: '🧭', words: /where|direction|address|street|subway|bus|train|airport|walk|far|exit|entrance|left|right|straight/i, replies: ['Where’s the exit?', 'Should I go left or right?', 'Do I go straight ahead?'] },
+  payment: { label: 'Paiement', emoji: '💳', words: /pay|card|cash|check|apple pay|google pay|receipt|declined|tip|charge|payment/i, replies: ['Can I pay by card?', 'Can I pay cash?', 'Can I get a receipt?'] },
 };
 
 
 const replyFrenchTranslations = new Map([
-  ['Could you repeat slowly, please?', 'Pouvez-vous répéter lentement, s’il vous plaît ?'],
-  ['I would like this one, please.', 'Je voudrais celui-ci, s’il vous plaît.'],
-  ['Can we have the check, please?', 'Pouvons-nous avoir l’addition, s’il vous plaît ?'],
+  ['Could you say that again, please?', 'Pouvez-vous répéter, s’il vous plaît ?'],
+  ['Could you repeat that slowly, please?', 'Pouvez-vous répéter lentement, s’il vous plaît ?'],
+  ['Could you speak slowly, please?', 'Pouvez-vous parler lentement, s’il vous plaît ?'],
+  ['Can I get this one, please?', 'Je voudrais celui-ci, s’il vous plaît.'],
+  ['Can I get the check, please?', 'Je voudrais payer l’addition, s’il vous plaît.'],
   ['I have a reservation.', 'J’ai une réservation.'],
-  ['Could you help me, please?', 'Pouvez-vous m’aider, s’il vous plaît ?'],
+  ['Can you help me, please?', 'Pouvez-vous m’aider, s’il vous plaît ?'],
   ['What time is check-out?', 'À quelle heure faut-il libérer la chambre ?'],
-  ['I rented this car.', 'J’ai loué cette voiture.'],
-  ['I need help with the car.', 'J’ai besoin d’aide avec la voiture.'],
-  ['Where can I park?', 'Où puis-je me garer ?'],
-  ['How much is it?', 'Combien ça coûte ?'],
+  ['I need to pick up my rental car.', 'Je dois récupérer ma voiture de location.'],
+  ['Where can I get gas?', 'Où puis-je trouver de l’essence ?'],
+  ['Where’s the parking lot?', 'Où est le parking ?'],
+  ['How much is this?', 'Combien ça coûte ?'],
   ['Do you have another size?', 'Avez-vous une autre taille ?'],
   ['Can I get a receipt?', 'Puis-je avoir un reçu ?'],
-  ['Yes, of course.', 'Oui, bien sûr.'],
-  ['I am a tourist.', 'Je suis touriste.'],
-  ['I need help now, please.', 'J’ai besoin d’aide maintenant, s’il vous plaît.'],
+  ['Sure. Here’s my passport.', 'Oui, bien sûr. Voici mon passeport.'],
+  ['I don’t understand.', 'Je ne comprends pas.'],
+  ['I’m visiting as a tourist.', 'Je suis touriste.'],
+  ['I need help.', 'J’ai besoin d’aide.'],
   ['Please call an ambulance.', 'Appelez une ambulance, s’il vous plaît.'],
-  ['I do not feel well.', 'Je ne me sens pas bien.'],
-  ['Can you show me on the map?', 'Pouvez-vous me montrer sur la carte ?'],
+  ['I’m hurt.', 'Je suis blessé.'],
+  ['Where’s the exit?', 'Où est la sortie ?'],
   ['Is it far from here?', 'Est-ce loin d’ici ?'],
-  ['Which way should I go?', 'Par où dois-je aller ?'],
+  ['Should I go left or right?', 'Je dois aller à gauche ou à droite ?'],
+  ['Do I go straight ahead?', 'Je dois aller tout droit ?'],
   ['Can I pay by card?', 'Puis-je payer par carte ?'],
-  ['Could I have the receipt?', 'Puis-je avoir le reçu ?'],
+  ['Can I pay cash?', 'Puis-je payer en espèces ?'],
   ['Can we try again?', 'Pouvons-nous réessayer ?'],
   ['Yes, here it is.', 'Oui, le voici.'],
 ]);
@@ -62,14 +66,24 @@ function normalizeSuggestions(replies = []) {
 }
 
 const frToEnDictionary = [
-  [/passeport/i, 'Yes, of course. Here is my passport.'],
-  [/touriste|vacances/i, 'I am visiting as a tourist.'],
-  [/voudrais payer l[’']addition|payer l[’']addition|addition.*s[’']il vous plaît|addition|payer|carte/i, 'I’d like to pay the bill, please.'],
-  [/urgence|aide/i, 'I need help now, please.'],
-  [/médecin|hôpital|mal/i, 'I need a doctor, please.'],
-  [/chemin|adresse|où/i, 'Can you show me on the map, please?'],
-  [/hôtel|réservation/i, 'I have a reservation.'],
-  [/répéter|lentement/i, 'Could you repeat slowly, please?'],
+  [/payer.*addition|addition/i, 'Can I get the check, please?', 'I would like to pay the bill, please.'],
+  [/toilettes?|wc/i, 'Where’s the restroom?', 'Where are the toilets?'],
+  [/payer.*carte|carte/i, 'Can I pay by card?', 'I would like to pay by card.'],
+  [/fran[cç]ais.*parle pas bien anglais|parle pas bien anglais/i, 'I’m French. I don’t speak English very well.', 'I am French; I do not speak English very well.'],
+  [/r[ée]p[ée]ter.*lentement|lentement.*r[ée]p[ée]ter/i, 'Could you repeat that slowly, please?', 'Could you repeat slowly, please?'],
+  [/eau/i, 'Can I get some water, please?', 'I would like some water, please.'],
+  [/sortie/i, 'I’m looking for the exit.', 'I am looking for the exit.'],
+  [/voiture de location|r[ée]cup[ée]rer.*voiture/i, 'I need to pick up my rental car.', 'I need to retrieve my rental car.'],
+  [/parking/i, 'Where’s the parking lot?', 'Where is the parking?'],
+  [/pouvez-vous m[’']aider|aidez-moi|aide/i, 'Can you help me, please?', 'Could you help me?'],
+  [/passeport/i, 'Sure. Here’s my passport.', 'Yes, of course. Here is my passport.'],
+  [/touriste|vacances/i, 'I’m visiting as a tourist.', 'I am visiting as a tourist.'],
+  [/urgence/i, 'I need help.', 'I need help now, please.'],
+  [/ambulance/i, 'Please call an ambulance.', 'Please call an ambulance.'],
+  [/bless[ée]|mal/i, 'I’m hurt.', 'I am hurt.'],
+  [/m[ée]decin|h[ôo]pital/i, 'I need a doctor, please.', 'I need a doctor, please.'],
+  [/chemin|adresse|o[ùu]/i, 'Can you show me on the map, please?', 'Can you show me on the map, please?'],
+  [/h[ôo]tel|r[ée]servation/i, 'I have a reservation.', 'I have a reservation.'],
 ];
 
 const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null, currentMode: 'home' };
@@ -121,6 +135,9 @@ function offlineTranslate(text, direction, context) {
       targetLanguage,
       frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.',
       americanEnglishText: text,
+      literalEnglishText: text,
+      frenchMeaning: match?.[1] || 'Sens approximatif détecté localement.',
+      context,
       suggestions: fallbackSuggestions,
       mode: 'local',
       simulated: true,
@@ -133,7 +150,10 @@ function offlineTranslate(text, direction, context) {
     sourceLanguage,
     targetLanguage,
     frenchText: text,
-    americanEnglishText: match?.[1] || `Please help me with this: ${text}`,
+    americanEnglishText: match?.[1] || 'Can you help me with this, please?',
+    literalEnglishText: match?.[2] || text,
+    frenchMeaning: text,
+    context,
     suggestions: fallbackSuggestions,
     mode: 'local',
     simulated: true,
@@ -246,7 +266,7 @@ function restartListen() {
 function restartSpeak() {
   elements.answerText.value = '';
   elements.answerFrenchOutput.textContent = '🇫🇷 La phrase française apparaîtra ici.';
-  elements.answerOutput.textContent = '🇺🇸 La phrase anglaise apparaîtra ici.';
+  elements.answerOutput.textContent = '🇺🇸 Anglais américain naturel apparaîtra ici.';
   elements.speakAnswer.disabled = true;
   elements.copyAnswer.disabled = true;
   state.lastAnswer = '';
