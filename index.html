@@ -2,9 +2,9 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#102a43" />
-    <meta name="description" content="Traducteur français / anglais américain mobile-first pour voyager aux États-Unis." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="description" content="Traducteur français / anglais américain ultra simple pour voyager aux États-Unis." />
     <title>US Translator</title>
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
@@ -13,94 +13,74 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="hero" aria-labelledby="app-title">
+      <header class="topbar">
         <div>
-          <p class="eyebrow">Compagnon de voyage aux États-Unis</p>
-          <h1 id="app-title">US Translator</h1>
-          <p class="hero-text">Comprendre, répondre et faire écouter une phrase claire en anglais américain, même sans IA disponible.</p>
+          <p class="eyebrow">Voyage aux États-Unis</p>
+          <h1>US Translator</h1>
         </div>
-        <div class="hero-badge" aria-label="Application installable">PWA<br /><span>mobile</span></div>
+        <button class="update-button hidden" id="updateButton" type="button">Mettre à jour</button>
+      </header>
+
+      <section class="home-screen" id="homeScreen" aria-labelledby="homeTitle">
+        <h2 id="homeTitle">Que se passe-t-il ?</h2>
+        <div class="mode-grid">
+          <button class="mode-card mode-listen" id="openListenMode" type="button">
+            <span class="mode-icon">🇺🇸</span>
+            <span>IL ME PARLE ANGLAIS</span>
+          </button>
+          <button class="mode-card mode-speak" id="openSpeakMode" type="button">
+            <span class="mode-icon">🇫🇷</span>
+            <span>JE RÉPONDS EN FRANÇAIS</span>
+          </button>
+        </div>
+        <div class="context-strip" id="contextGrid" aria-label="Choisir le contexte"></div>
       </section>
 
-      <section class="card conversation-card" aria-labelledby="conversationTitle">
-        <div class="section-heading stacked">
-          <div>
-            <p class="kicker">Mode conversation</p>
-            <h2 id="conversationTitle">1. La personne parle anglais</h2>
-          </div>
-          <button class="pill-button" id="conversationPreset" type="button">🇺🇸 Anglais → Français</button>
-        </div>
-        <textarea id="sourceText" rows="5" placeholder="Ex. Can I see your passport, please?" aria-describedby="conversationHelp"></textarea>
-        <p class="helper" id="conversationHelp">Dictez ou collez la phrase entendue. L’app utilise /api/translate si disponible, puis le secours local.</p>
-        <div class="action-grid">
-          <button class="secondary big-button" id="micButton" type="button">🎙️ Dicter</button>
-          <button class="primary big-button" id="translateButton" type="button">Traduire</button>
-        </div>
-        <p class="status" id="status" role="status" aria-live="polite">Prêt pour une conversation.</p>
-      </section>
+      <section class="flow-panel hidden" id="listenPanel" aria-labelledby="listenTitle">
+        <button class="back-button" id="backFromListen" type="button">← Accueil</button>
+        <p class="mode-label">IL ME PARLE ANGLAIS</p>
+        <h2 id="listenTitle">Appuie et laisse parler la personne</h2>
+        <button class="mic-hero" id="micButton" type="button" aria-label="Dicter une phrase anglaise">🎙️</button>
+        <textarea id="sourceText" rows="2" placeholder="Ou écris la phrase anglaise ici"></textarea>
+        <button class="primary action-full" id="translateButton" type="button">Traduire</button>
+        <p class="status" id="status" role="status" aria-live="polite">Prêt.</p>
 
-      <section class="card result-card" aria-labelledby="translationTitle">
-        <div class="section-heading">
-          <div>
-            <p class="kicker">2. Traduction française</p>
-            <h2 id="translationTitle">Ce que cela veut dire</h2>
-          </div>
-          <div class="button-row">
-            <button class="ghost" id="copyTranslation" type="button" disabled>Copier</button>
-            <button class="audio" id="speakTranslation" type="button" disabled>🔊 Écouter</button>
+        <div class="result-block" id="listenResult">
+          <p class="small-title">Il a dit en anglais</p>
+          <p class="heard-text" id="heardEnglish">—</p>
+          <p class="small-title">Traduction française</p>
+          <p class="big-translation" id="translationOutput">La traduction apparaîtra ici.</p>
+          <div class="quick-actions">
+            <button class="secondary" id="copyTranslation" type="button" disabled>Copier</button>
+            <button class="secondary" id="restartListen" type="button">Recommencer</button>
           </div>
         </div>
-        <p class="translation-output" id="translationOutput">La traduction apparaîtra ici en grand.</p>
-      </section>
 
-      <section class="card response-card" aria-labelledby="answerTitle">
-        <div class="section-heading stacked">
-          <div>
-            <p class="kicker">3. Répondre en français</p>
-            <h2 id="answerTitle">Votre réponse</h2>
-          </div>
-        </div>
-        <textarea id="answerText" rows="3" placeholder="Ex. Oui, bien sûr. Voici mon passeport."></textarea>
-        <div class="action-grid three-actions">
-          <button class="secondary" id="answerMicButton" type="button">🎙️ Dicter</button>
-          <button class="primary" id="translateAnswerButton" type="button">Traduire ma réponse</button>
-          <button class="ghost danger" id="clearButton" type="button">Effacer</button>
-        </div>
-        <div class="answer-output-wrap">
-          <p class="answer-label">À faire écouter en anglais américain</p>
-          <p class="answer-output" id="answerOutput">Votre réponse traduite apparaîtra ici.</p>
-          <div class="button-row align-end">
-            <button class="ghost" id="copyAnswer" type="button" disabled>Copier</button>
-            <button class="audio" id="speakAnswer" type="button" disabled>🔊 Faire écouter</button>
-          </div>
+        <div class="reply-zone">
+          <p class="small-title">3 réponses possibles</p>
+          <div class="reply-list" id="replyList"></div>
         </div>
       </section>
 
-      <section class="card" aria-labelledby="replyTitle">
-        <div class="section-heading stacked">
-          <div>
-            <p class="kicker">Réponses rapides</p>
-            <h2 id="replyTitle">Phrases courtes, naturelles et polies</h2>
-          </div>
-        </div>
-        <div class="context-grid" id="contextGrid" aria-label="Contextes de voyage"></div>
-        <div class="reply-list" id="replyList">
-          <p class="empty-state">Après une traduction, choisissez une réponse adaptée au restaurant, hôtel, voiture, magasin, police/douane, urgence, direction ou paiement.</p>
-        </div>
-      </section>
+      <section class="flow-panel hidden" id="speakPanel" aria-labelledby="speakTitle">
+        <button class="back-button" id="backFromSpeak" type="button">← Accueil</button>
+        <p class="mode-label">JE RÉPONDS EN FRANÇAIS</p>
+        <h2 id="speakTitle">Dis ta réponse en français</h2>
+        <button class="mic-hero french" id="answerMicButton" type="button" aria-label="Dicter une réponse française">🎙️</button>
+        <textarea id="answerText" rows="2" placeholder="Ou écris ta réponse en français"></textarea>
+        <button class="primary action-full" id="translateAnswerButton" type="button">Traduire en anglais</button>
 
-      <section class="card" aria-labelledby="historyTitle">
-        <div class="section-heading">
-          <div>
-            <p class="kicker">Mémo local</p>
-            <h2 id="historyTitle">Historique récent</h2>
+        <div class="result-block">
+          <p class="small-title">À faire écouter en anglais américain</p>
+          <p class="big-translation english" id="answerOutput">La phrase anglaise apparaîtra ici.</p>
+          <div class="quick-actions">
+            <button class="primary" id="speakAnswer" type="button" disabled>🔊 Faire écouter</button>
+            <button class="secondary" id="copyAnswer" type="button" disabled>Copier</button>
+            <button class="secondary" id="restartSpeak" type="button">Recommencer</button>
           </div>
-          <button class="ghost" id="clearHistory" type="button">Effacer</button>
         </div>
-        <ol class="history-list" id="historyList"></ol>
       </section>
     </main>
-
     <script src="src/app.js" type="module"></script>
   </body>
 </html>
