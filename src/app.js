@@ -80,6 +80,48 @@ function cleanTranslationText(text = '') {
   return cleaned;
 }
 
+
+function normalizeFrenchKey(text = '') {
+  return cleanTranslationText(text)
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/[?!.:,;]+/g, ' ')
+    .replace(/[’']/g, '’')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasTechnicalPrefix(text = '') {
+  return parasitePrefixPatterns.some((pattern) => pattern.test(String(text).trim()));
+}
+
+function hasLikelyFrenchContent(text = '') {
+  const value = String(text).toLowerCase();
+  const frenchWords = value.match(/\b(?:bonjour|bonsoir|merci|beaucoup|au revoir|je|j’ai|voudrais|pouvez|vous|s’il|pla[iî]t|toilettes|parking|sortie|r[ée]servation|voiture|location|fran[cç]ais|anglais|comprends|r[ée]p[ée]ter|lentement|addition|eau|carte|aider|cherche|chambre|besoin|aide|appelez|ambulance|o[ùu]|sont|est|dois|r[ée]cup[ée]rer)\b/g) || [];
+  return /[àâçéèêëîïôùûüÿœ]/i.test(value) || frenchWords.length >= 2;
+}
+
+function isSameOrNearlySame(source = '', result = '') {
+  const normalize = (value) => cleanTranslationText(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  const sourceNorm = normalize(source);
+  const resultNorm = normalize(result);
+  if (!sourceNorm || !resultNorm) return false;
+  return sourceNorm === resultNorm || sourceNorm.includes(resultNorm) || resultNorm.includes(sourceNorm);
+}
+
+function validateAmericanEnglishResult(sourceText, resultText) {
+  const cleaned = cleanTranslationText(resultText);
+  if (!cleaned || hasTechnicalPrefix(resultText) || hasLikelyFrenchContent(cleaned) || isSameOrNearlySame(sourceText, cleaned)) {
+    return { canSpeak: false, americanEnglishText: '' };
+  }
+  return { canSpeak: true, americanEnglishText: cleaned };
+}
+
 function normalizeSuggestions(replies = []) {
   return replies.slice(0, 3).map((reply) => {
     if (typeof reply === 'string') {
@@ -94,27 +136,31 @@ function normalizeSuggestions(replies = []) {
   });
 }
 
-const frToEnDictionary = [
-  [/bonjour.*comment.*allez|comment.*allez.*vous/i, 'Hi, how are you doing?', 'Hello, how are you?'],
-  [/payer.*addition|addition/i, 'Can I get the check, please?', 'I would like to pay the bill, please.'],
-  [/toilettes?|wc/i, 'Where’s the restroom?', 'Where are the toilets?'],
-  [/payer.*carte|carte/i, 'Can I pay by card?', 'I would like to pay by card.'],
-  [/fran[cç]ais.*parle pas bien anglais|parle pas bien anglais/i, 'I’m French. I don’t speak English very well.', 'I am French; I do not speak English very well.'],
-  [/r[ée]p[ée]ter.*lentement|lentement.*r[ée]p[ée]ter/i, 'Could you repeat that slowly, please?', 'Could you repeat slowly, please?'],
-  [/eau/i, 'Can I get some water, please?', 'I would like some water, please.'],
-  [/sortie/i, 'I’m looking for the exit.', 'I am looking for the exit.'],
-  [/voiture de location|r[ée]cup[ée]rer.*voiture/i, 'I need to pick up my rental car.', 'I need to retrieve my rental car.'],
-  [/parking/i, 'Where’s the parking lot?', 'Where is the parking?'],
-  [/pouvez-vous m[’']aider|aidez-moi|aide/i, 'Can you help me, please?', 'Could you help me?'],
-  [/passeport/i, 'Sure. Here’s my passport.', 'Yes, of course. Here is my passport.'],
-  [/touriste|vacances/i, 'I’m visiting as a tourist.', 'I am visiting as a tourist.'],
-  [/urgence/i, 'I need help.', 'I need help now, please.'],
-  [/ambulance/i, 'Please call an ambulance.', 'Please call an ambulance.'],
-  [/bless[ée]|mal/i, 'I’m hurt.', 'I am hurt.'],
-  [/m[ée]decin|h[ôo]pital/i, 'I need a doctor, please.', 'I need a doctor, please.'],
-  [/chemin|adresse|o[ùu]/i, 'Can you show me on the map, please?', 'Can you show me on the map, please?'],
-  [/h[ôo]tel|r[ée]servation/i, 'I have a reservation.', 'I have a reservation.'],
-];
+const unavailableFallbackMessage = 'Traduction IA non connectée. Phrase non disponible en mode secours.';
+
+const frToEnDictionary = new Map([
+  ['bonjour comment allez-vous', ['Hi, how are you doing?', 'Hello, how are you?']],
+  ['bonjour', ['Hi.', 'Hello.']],
+  ['bonsoir', ['Good evening.', 'Good evening.']],
+  ['merci', ['Thank you.', 'Thank you.']],
+  ['merci beaucoup', ['Thank you very much.', 'Thank you very much.']],
+  ['au revoir', ['Goodbye.', 'Goodbye.']],
+  ['je ne comprends pas', ['I don’t understand.', 'I do not understand.']],
+  ['pouvez-vous répéter lentement s’il vous plaît', ['Could you repeat that slowly, please?', 'Could you repeat slowly, please?']],
+  ['je suis français je ne parle pas bien anglais', ['I’m French. I don’t speak English very well.', 'I am French; I do not speak English very well.']],
+  ['je voudrais payer l’addition s’il vous plaît', ['Can I get the check, please?', 'I would like to pay the bill, please.']],
+  ['où sont les toilettes', ['Where’s the restroom?', 'Where are the toilets?']],
+  ['je voudrais de l’eau s’il vous plaît', ['Can I get some water, please?', 'I would like some water, please.']],
+  ['je voudrais payer par carte', ['Can I pay by card?', 'I would like to pay by card.']],
+  ['pouvez-vous m’aider', ['Can you help me, please?', 'Could you help me?']],
+  ['je cherche la sortie', ['I’m looking for the exit.', 'I am looking for the exit.']],
+  ['où est le parking', ['Where’s the parking lot?', 'Where is the parking lot?']],
+  ['je dois récupérer ma voiture de location', ['I need to pick up my rental car.', 'I need to retrieve my rental car.']],
+  ['j’ai une réservation', ['I have a reservation.', 'I have a reservation.']],
+  ['je voudrais une chambre', ['I’d like a room.', 'I would like a room.']],
+  ['j’ai besoin d’aide', ['I need help.', 'I need help.']],
+  ['appelez une ambulance', ['Please call an ambulance.', 'Please call an ambulance.']],
+]);
 
 const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null, currentMode: 'home' };
 
@@ -174,20 +220,16 @@ function offlineTranslate(text, direction, context) {
     };
   }
 
-  const match = frToEnDictionary.find(([pattern]) => pattern.test(text));
-  return {
-    sourceText: text,
-    sourceLanguage,
-    targetLanguage,
-    frenchText: text,
-    americanEnglishText: cleanTranslationText(match?.[1] || text),
-    literalEnglishText: match?.[2] || text,
-    frenchMeaning: text,
-    context,
-    suggestions: fallbackSuggestions,
-    mode: 'local',
-    simulated: true,
-  };
+  const base = { sourceText: text, sourceLanguage, targetLanguage, frenchText: text, frenchMeaning: text, context, suggestions: fallbackSuggestions, mode: 'local', simulated: true };
+  const match = frToEnDictionary.get(normalizeFrenchKey(text));
+  if (!match) {
+    return { ...base, error: true, message: unavailableFallbackMessage, literalEnglishText: '', americanEnglishText: '', canSpeak: false };
+  }
+  const validation = validateAmericanEnglishResult(text, match[0]);
+  if (!validation.canSpeak) {
+    return { ...base, error: true, message: unavailableFallbackMessage, literalEnglishText: '', americanEnglishText: '', canSpeak: false };
+  }
+  return { ...base, literalEnglishText: match[1], americanEnglishText: validation.americanEnglishText, canSpeak: true };
 }
 
 async function translateIncoming() {
@@ -210,13 +252,22 @@ async function translateAnswer() {
   if (!text) return focusWithStatus(elements.answerText, 'Dictez ou écrivez votre réponse en français.');
   updateStatus('Traduction en cours…');
   const result = await requestTranslation(text, 'fr-en', state.activeContext);
-  const cleanAnswer = cleanTranslationText(result.americanEnglishText);
+  const validation = validateAmericanEnglishResult(text, result.americanEnglishText);
+  const cleanAnswer = result.canSpeak === false ? '' : validation.americanEnglishText;
   state.lastAnswer = cleanAnswer;
-  elements.answerFrenchOutput.textContent = `🇫🇷 Ce que j’ai dit : ${result.frenchText}`;
-  elements.answerOutput.textContent = `🇺🇸 Anglais américain naturel :\n${cleanAnswer}`;
+  elements.answerFrenchOutput.textContent = `🇫🇷 Ce que j’ai dit : ${result.frenchText || text}`;
+  if (result.error || !validation.canSpeak || result.canSpeak === false) {
+    elements.answerOutput.textContent = `🇺🇸 ${result.message || unavailableFallbackMessage}`;
+    elements.speakAnswer.disabled = true;
+    elements.copyAnswer.disabled = true;
+    updateStatus(result.message || unavailableFallbackMessage);
+    return;
+  }
+  elements.answerOutput.textContent = `🇺🇸 Anglais américain naturel :
+${cleanAnswer}`;
   elements.speakAnswer.disabled = false;
   elements.copyAnswer.disabled = false;
-  updateStatus(result.simulated ? 'Mode secours local : anglais américain généré sans IA. Appuyez sur FAIRE ÉCOUTER.' : 'Anglais américain prêt. Appuyez sur FAIRE ÉCOUTER.');
+  updateStatus(result.simulated ? 'Mode secours local — phrases limitées. Appuyez sur FAIRE ÉCOUTER.' : 'Anglais américain prêt. Appuyez sur FAIRE ÉCOUTER.');
 }
 
 function renderContexts() {
@@ -258,9 +309,11 @@ function renderReplies(replies) {
 
 function speak(text, lang) {
   if (!text) return;
+  const cleanText = cleanTranslationText(text);
+  if (lang === 'en-US' && !validateAmericanEnglishResult('', cleanText).canSpeak) return updateStatus('Audio désactivé : résultat anglais non valide.');
   if (!('speechSynthesis' in window)) return updateStatus('Audio non disponible sur ce navigateur.');
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(cleanTranslationText(text));
+  const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.lang = lang;
   utterance.rate = 0.9;
   window.speechSynthesis.speak(utterance);
