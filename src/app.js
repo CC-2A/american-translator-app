@@ -55,17 +55,47 @@ const enToFrDictionary = [
   [/price|size|store|shop|return|buy/i, 'Il parle d’un achat en magasin.'],
 ];
 
+const parasitePrefixPatterns = [
+  /^please\s+help\s+me\s+with\s+this\s*:?\s*/i,
+  /^help\s+me\s+with\s+this\s*:?\s*/i,
+  /^translate\s+this\s*:?\s*/i,
+  /^say\s+this\s*:?\s*/i,
+  /^the\s+translation\s+is\s*:?\s*/i,
+  /^here\s+is\s+the\s+translation\s*:?\s*/i,
+  /^in\s+american\s+english\s*:?\s*/i,
+  /^(?:assistant|ai|instruction|response|answer|output)\s*:?\s*/i,
+];
+
+function cleanTranslationText(text = '') {
+  let cleaned = String(text).trim();
+  let previous = '';
+  while (cleaned && cleaned !== previous) {
+    previous = cleaned;
+    cleaned = cleaned.trim().replace(/^[\s"'“”‘’`]+|[\s"'“”‘’`]+$/g, '').trim();
+    parasitePrefixPatterns.forEach((pattern) => {
+      cleaned = cleaned.replace(pattern, '').trim();
+    });
+    cleaned = cleaned.replace(/^[:\-–—]+\s*/, '').trim();
+  }
+  return cleaned;
+}
+
 function normalizeSuggestions(replies = []) {
   return replies.slice(0, 3).map((reply) => {
-    if (typeof reply === 'string') return { americanEnglishText: reply, frenchText: replyFrenchTranslations.get(reply) || 'Traduction française à confirmer.' };
+    if (typeof reply === 'string') {
+      const americanEnglishText = cleanTranslationText(reply);
+      return { americanEnglishText, frenchText: replyFrenchTranslations.get(americanEnglishText) || 'Traduction française à confirmer.' };
+    }
+    const americanEnglishText = cleanTranslationText(reply.americanEnglishText || reply.text || '');
     return {
-      americanEnglishText: reply.americanEnglishText || reply.text || '',
-      frenchText: reply.frenchText || replyFrenchTranslations.get(reply.americanEnglishText || reply.text || '') || 'Traduction française à confirmer.',
+      americanEnglishText,
+      frenchText: reply.frenchText || replyFrenchTranslations.get(americanEnglishText) || 'Traduction française à confirmer.',
     };
   });
 }
 
 const frToEnDictionary = [
+  [/bonjour.*comment.*allez|comment.*allez.*vous/i, 'Hi, how are you doing?', 'Hello, how are you?'],
   [/payer.*addition|addition/i, 'Can I get the check, please?', 'I would like to pay the bill, please.'],
   [/toilettes?|wc/i, 'Where’s the restroom?', 'Where are the toilets?'],
   [/payer.*carte|carte/i, 'Can I pay by card?', 'I would like to pay by card.'],
@@ -150,7 +180,7 @@ function offlineTranslate(text, direction, context) {
     sourceLanguage,
     targetLanguage,
     frenchText: text,
-    americanEnglishText: match?.[1] || 'Can you help me with this, please?',
+    americanEnglishText: cleanTranslationText(match?.[1] || text),
     literalEnglishText: match?.[2] || text,
     frenchMeaning: text,
     context,
@@ -176,13 +206,14 @@ async function translateIncoming() {
 }
 
 async function translateAnswer() {
-  const text = elements.answerText.value.trim();
+  const text = cleanTranslationText(elements.answerText.value);
   if (!text) return focusWithStatus(elements.answerText, 'Dictez ou écrivez votre réponse en français.');
   updateStatus('Traduction en cours…');
   const result = await requestTranslation(text, 'fr-en', state.activeContext);
-  state.lastAnswer = result.americanEnglishText;
-  elements.answerFrenchOutput.textContent = `🇫🇷 ${result.frenchText}`;
-  elements.answerOutput.textContent = `🇺🇸 ${result.americanEnglishText}`;
+  const cleanAnswer = cleanTranslationText(result.americanEnglishText);
+  state.lastAnswer = cleanAnswer;
+  elements.answerFrenchOutput.textContent = `🇫🇷 Ce que j’ai dit : ${result.frenchText}`;
+  elements.answerOutput.textContent = `🇺🇸 Anglais américain naturel :\n${cleanAnswer}`;
   elements.speakAnswer.disabled = false;
   elements.copyAnswer.disabled = false;
   updateStatus(result.simulated ? 'Mode secours local : anglais américain généré sans IA. Appuyez sur FAIRE ÉCOUTER.' : 'Anglais américain prêt. Appuyez sur FAIRE ÉCOUTER.');
@@ -229,7 +260,7 @@ function speak(text, lang) {
   if (!text) return;
   if (!('speechSynthesis' in window)) return updateStatus('Audio non disponible sur ce navigateur.');
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(cleanTranslationText(text));
   utterance.lang = lang;
   utterance.rate = 0.9;
   window.speechSynthesis.speak(utterance);
