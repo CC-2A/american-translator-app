@@ -1,4 +1,4 @@
-const CACHE_NAME = 'us-translator-terrain-v2026-06-13-01';
+const CACHE_NAME = 'us-translator-fr-reply-v2026-06-13-02';
 const APP_SHELL = ['./', './index.html', './src/styles.css', './src/app.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
