@@ -79,10 +79,16 @@ const enToFrDictionary = [
   [/price|size|store|shop|return|buy/i, 'Il parle d’un achat en magasin.'],
 ];
 
-const unavailableFallbackMessage = 'Traduction IA non connectée. Phrase non disponible en mode secours.';
+const unavailableFallbackMessage = 'Traduction IA non connectée. Cette phrase n’est pas disponible en mode secours local.';
 
 const frToEnDictionary = new Map([
   ['bonjour comment allez-vous', ['Hi, how are you doing?', 'Hello, how are you?']],
+  ['comment allez-vous', ['How are you doing?', 'How are you?']],
+  ['j’espère que tout va bien pour vous', ['I hope you’re doing well.', 'I hope you are doing well.']],
+  ['j’espère que vous allez bien', ['I hope you’re doing well.', 'I hope you are doing well.']],
+  ['j’espère que tout va bien', ['I hope everything is going well.', 'I hope everything is going well.']],
+  ['je vous remercie', ['Thank you.', 'Thank you.']],
+  ['merci pour votre aide', ['Thank you for your help.', 'Thank you for your help.']],
   ['bonjour', ['Hi.', 'Hello.']],
   ['bonsoir', ['Good evening.', 'Good evening.']],
   ['merci', ['Thank you.', 'Thank you.']],
@@ -152,8 +158,19 @@ function normalizeFrenchKey(text = '') {
     .trim();
 }
 
+const unavailableTranslationPatterns = [
+  /traduction ia non connectée/i,
+  /phrase non disponible en mode secours/i,
+  /mode secours local/i,
+  /erreur/i,
+  /api non disponible/i,
+  /translation unavailable/i,
+  /ai not connected/i,
+];
+
 function hasTechnicalPrefix(text = '') {
-  return parasitePrefixPatterns.some((pattern) => pattern.test(String(text).trim()));
+  const value = String(text).trim();
+  return parasitePrefixPatterns.some((pattern) => pattern.test(value)) || unavailableTranslationPatterns.some((pattern) => pattern.test(value));
 }
 
 function hasLikelyFrenchContent(text = '') {

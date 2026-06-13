@@ -94,8 +94,19 @@ function normalizeFrenchKey(text = '') {
     .trim();
 }
 
+const unavailableTranslationPatterns = [
+  /traduction ia non connectée/i,
+  /phrase non disponible en mode secours/i,
+  /mode secours local/i,
+  /erreur/i,
+  /api non disponible/i,
+  /translation unavailable/i,
+  /ai not connected/i,
+];
+
 function hasTechnicalPrefix(text = '') {
-  return parasitePrefixPatterns.some((pattern) => pattern.test(String(text).trim()));
+  const value = String(text).trim();
+  return parasitePrefixPatterns.some((pattern) => pattern.test(value)) || unavailableTranslationPatterns.some((pattern) => pattern.test(value));
 }
 
 function hasLikelyFrenchContent(text = '') {
@@ -139,10 +150,16 @@ function normalizeSuggestions(replies = []) {
   });
 }
 
-const unavailableFallbackMessage = 'Traduction IA non connectée. Phrase non disponible en mode secours.';
+const unavailableFallbackMessage = 'Traduction IA non connectée. Cette phrase n’est pas disponible en mode secours local.';
 
 const frToEnDictionary = new Map([
   ['bonjour comment allez-vous', ['Hi, how are you doing?', 'Hello, how are you?']],
+  ['comment allez-vous', ['How are you doing?', 'How are you?']],
+  ['j’espère que tout va bien pour vous', ['I hope you’re doing well.', 'I hope you are doing well.']],
+  ['j’espère que vous allez bien', ['I hope you’re doing well.', 'I hope you are doing well.']],
+  ['j’espère que tout va bien', ['I hope everything is going well.', 'I hope everything is going well.']],
+  ['je vous remercie', ['Thank you.', 'Thank you.']],
+  ['merci pour votre aide', ['Thank you for your help.', 'Thank you for your help.']],
   ['bonjour', ['Hi.', 'Hello.']],
   ['bonsoir', ['Good evening.', 'Good evening.']],
   ['merci', ['Thank you.', 'Thank you.']],
@@ -171,7 +188,7 @@ const $ = (selector) => document.querySelector(selector);
 const elements = {
   homeScreen: $('#homeScreen'), listenPanel: $('#listenPanel'), speakPanel: $('#speakPanel'), contextGrid: $('#contextGrid'),
   sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
-  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'), autoSpeakToggle: $('#autoSpeakToggle'),
+  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerListenTitle: $('#answerListenTitle'), answerOutput: $('#answerOutput'), answerError: $('#answerError'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'), autoSpeakToggle: $('#autoSpeakToggle'),
 };
 
 function showMode(mode) {
@@ -258,14 +275,20 @@ async function translateAnswer() {
   const validation = validateAmericanEnglishResult(text, result.americanEnglishText);
   const cleanAnswer = result.canSpeak === false ? '' : validation.americanEnglishText;
   state.lastAnswer = cleanAnswer;
-  elements.answerFrenchOutput.textContent = `🇫🇷 Ce que j’ai dit : ${result.frenchText || text}`;
-  if (result.error || !validation.canSpeak || result.canSpeak === false) {
-    elements.answerOutput.textContent = `🇺🇸 ${result.message || unavailableFallbackMessage}`;
+  elements.answerFrenchOutput.textContent = result.frenchText || text;
+  const cannotSpeak = result.error || !validation.canSpeak || result.canSpeak === false;
+  elements.answerListenTitle.classList.toggle('hidden', cannotSpeak);
+  elements.answerOutput.classList.toggle('hidden', cannotSpeak);
+  elements.answerError.classList.toggle('hidden', !cannotSpeak);
+  if (cannotSpeak) {
+    elements.answerOutput.textContent = '';
+    elements.answerError.textContent = result.message || unavailableFallbackMessage;
     elements.speakAnswer.disabled = true;
     elements.copyAnswer.disabled = true;
     updateStatus(result.message || unavailableFallbackMessage);
     return;
   }
+  elements.answerError.textContent = '';
   elements.answerOutput.textContent = `🇺🇸 Anglais américain naturel :
 ${cleanAnswer}`;
   elements.speakAnswer.disabled = false;
@@ -385,7 +408,11 @@ function restartListen() {
 
 function restartSpeak() {
   elements.answerText.value = '';
-  elements.answerFrenchOutput.textContent = '🇫🇷 La phrase française apparaîtra ici.';
+  elements.answerFrenchOutput.textContent = 'La phrase française apparaîtra ici.';
+  elements.answerListenTitle.classList.remove('hidden');
+  elements.answerOutput.classList.remove('hidden');
+  elements.answerError.classList.add('hidden');
+  elements.answerError.textContent = '';
   elements.answerOutput.textContent = '🇺🇸 Anglais américain naturel apparaîtra ici.';
   elements.speakAnswer.disabled = true;
   elements.copyAnswer.disabled = true;
