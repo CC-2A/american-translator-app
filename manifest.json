@@ -1,0 +1,14 @@
+{
+  "name": "US Translator - Voyage aux États-Unis",
+  "short_name": "US Translator",
+  "description": "Traducteur français / anglais américain mobile-first pour voyager aux États-Unis.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#102a43",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
