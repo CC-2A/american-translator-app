@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026.06.13-natural-american-english';
+const CACHE_VERSION = '2026.06.13-fast-oral-mode';
 
 const contexts = {
   restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter|restroom/i, replies: ['Could you say that again, please?', 'Can I get this one, please?', 'Can I get the check, please?'] },
@@ -27,6 +27,9 @@ const replyFrenchTranslations = new Map([
   ['How much is this?', 'Combien ça coûte ?'],
   ['Do you have another size?', 'Avez-vous une autre taille ?'],
   ['Can I get a receipt?', 'Puis-je avoir un reçu ?'],
+  ['Yes, here it is.', 'Oui, le voici.'],
+  ['I don’t have it with me.', 'Je ne l’ai pas sur moi.'],
+  ['Can you explain why, please?', 'Pouvez-vous expliquer pourquoi, s’il vous plaît ?'],
   ['Sure. Here’s my passport.', 'Oui, bien sûr. Voici mon passeport.'],
   ['I don’t understand.', 'Je ne comprends pas.'],
   ['I’m visiting as a tourist.', 'Je suis touriste.'],
@@ -162,13 +165,13 @@ const frToEnDictionary = new Map([
   ['appelez une ambulance', ['Please call an ambulance.', 'Please call an ambulance.']],
 ]);
 
-const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null, currentMode: 'home' };
+const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null, currentMode: 'home', americanVoice: null, autoSpeak: false, activeRecognition: null };
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   homeScreen: $('#homeScreen'), listenPanel: $('#listenPanel'), speakPanel: $('#speakPanel'), contextGrid: $('#contextGrid'),
   sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
-  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'),
+  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerOutput: $('#answerOutput'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'), autoSpeakToggle: $('#autoSpeakToggle'),
 };
 
 function showMode(mode) {
@@ -176,8 +179,8 @@ function showMode(mode) {
   elements.homeScreen.classList.toggle('hidden', mode !== 'home');
   elements.listenPanel.classList.toggle('hidden', mode !== 'listen');
   elements.speakPanel.classList.toggle('hidden', mode !== 'speak');
-  if (mode === 'listen') elements.sourceText.focus();
-  if (mode === 'speak') elements.answerText.focus();
+  if (mode === 'listen') elements.micButton.focus();
+  if (mode === 'speak') elements.answerMicButton.focus();
 }
 
 function detectContext(text = '') {
@@ -237,20 +240,20 @@ async function translateIncoming() {
   if (!text) return focusWithStatus(elements.sourceText, 'Dictez ou écrivez la phrase anglaise entendue.');
   state.activeContext = detectContext(text);
   renderContexts();
-  updateStatus('Traduction en cours…');
+  updateStatus('Je traduis…');
   const result = await requestTranslation(text, 'en-fr', state.activeContext);
   state.lastTranslation = result.frenchText;
-  elements.heardEnglish.textContent = `🇺🇸 ${result.americanEnglishText}`;
+  elements.heardEnglish.textContent = `🇺🇸 ${result.americanEnglishText || text}`;
   elements.translationOutput.textContent = `🇫🇷 ${result.frenchText}`;
   elements.copyTranslation.disabled = false;
   renderReplies(result.suggestions);
-  updateStatus(result.simulated ? 'Mode secours local : traduction limitée, sans IA.' : 'Traduction IA prête.');
+  updateStatus(result.simulated ? 'Prêt — mode secours local limité.' : 'Prêt.');
 }
 
 async function translateAnswer() {
   const text = cleanTranslationText(elements.answerText.value);
   if (!text) return focusWithStatus(elements.answerText, 'Dictez ou écrivez votre réponse en français.');
-  updateStatus('Traduction en cours…');
+  updateStatus('Je traduis…');
   const result = await requestTranslation(text, 'fr-en', state.activeContext);
   const validation = validateAmericanEnglishResult(text, result.americanEnglishText);
   const cleanAnswer = result.canSpeak === false ? '' : validation.americanEnglishText;
@@ -267,7 +270,8 @@ async function translateAnswer() {
 ${cleanAnswer}`;
   elements.speakAnswer.disabled = false;
   elements.copyAnswer.disabled = false;
-  updateStatus(result.simulated ? 'Mode secours local — phrases limitées. Appuyez sur FAIRE ÉCOUTER.' : 'Anglais américain prêt. Appuyez sur FAIRE ÉCOUTER.');
+  updateStatus(result.simulated ? 'Prêt — mode secours local limité.' : 'Prêt.');
+  if (state.autoSpeak) speak(cleanAnswer, 'en-US');
 }
 
 function renderContexts() {
@@ -307,27 +311,59 @@ function renderReplies(replies) {
   });
 }
 
+function preloadVoices() {
+  if (!('speechSynthesis' in window)) return;
+  const pickVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    state.americanVoice = voices.find((voice) => voice.lang === 'en-US' && /Samantha|Google US English|Microsoft.*(Jenny|Aria|Guy)/i.test(voice.name))
+      || voices.find((voice) => voice.lang === 'en-US')
+      || voices.find((voice) => voice.lang?.startsWith('en-'))
+      || null;
+  };
+  pickVoice();
+  window.speechSynthesis.onvoiceschanged = pickVoice;
+}
+
 function speak(text, lang) {
   if (!text) return;
   const cleanText = cleanTranslationText(text);
-  if (lang === 'en-US' && !validateAmericanEnglishResult('', cleanText).canSpeak) return updateStatus('Audio désactivé : résultat anglais non valide.');
+  if (lang !== 'en-US') return updateStatus('Audio désactivé : lecture autorisée uniquement en anglais américain.');
+  if (!validateAmericanEnglishResult('', cleanText).canSpeak) return updateStatus('Audio désactivé : aucune vraie phrase anglaise disponible.');
   if (!('speechSynthesis' in window)) return updateStatus('Audio non disponible sur ce navigateur.');
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = lang;
-  utterance.rate = 0.9;
+  utterance.lang = 'en-US';
+  utterance.voice = state.americanVoice;
+  utterance.rate = 0.95;
   window.speechSynthesis.speak(utterance);
 }
 
 function startVoiceInput(target, lang, afterResult) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return updateStatus('Micro non compatible ici. Écrivez la phrase.');
+  state.activeRecognition?.abort?.();
+  let finalTranscript = '';
+  let translated = false;
   const recognition = new SpeechRecognition();
+  state.activeRecognition = recognition;
   recognition.lang = lang;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
+  recognition.continuous = false;
   recognition.onstart = () => updateStatus('J’écoute…');
   recognition.onerror = () => updateStatus('Micro impossible. Écrivez la phrase.');
-  recognition.onresult = (event) => { target.value = event.results[0][0].transcript; afterResult?.(); };
+  recognition.onresult = (event) => {
+    const transcript = Array.from(event.results).map((result) => result[0].transcript).join(' ').trim();
+    target.value = transcript;
+    if (event.results[event.results.length - 1].isFinal) finalTranscript = transcript;
+  };
+  recognition.onend = () => {
+    if (state.activeRecognition === recognition) state.activeRecognition = null;
+    const text = (finalTranscript || target.value).trim();
+    if (!text || translated) return updateStatus('Prêt.');
+    translated = true;
+    target.value = text;
+    afterResult?.();
+  };
   recognition.start();
 }
 
@@ -344,7 +380,7 @@ function restartListen() {
   elements.copyTranslation.disabled = true;
   state.lastTranslation = '';
   updateStatus('Prêt.');
-  elements.sourceText.focus();
+  elements.micButton.focus();
 }
 
 function restartSpeak() {
@@ -355,7 +391,7 @@ function restartSpeak() {
   elements.copyAnswer.disabled = true;
   state.lastAnswer = '';
   updateStatus('Prêt.');
-  elements.answerText.focus();
+  elements.answerMicButton.focus();
 }
 
 function focusWithStatus(element, message) { updateStatus(message); element.focus(); }
@@ -372,6 +408,11 @@ elements.translateButton.addEventListener('click', translateIncoming);
 elements.micButton.addEventListener('click', () => startVoiceInput(elements.sourceText, 'en-US', translateIncoming));
 elements.answerMicButton.addEventListener('click', () => startVoiceInput(elements.answerText, 'fr-FR', translateAnswer));
 elements.translateAnswerButton.addEventListener('click', translateAnswer);
+elements.autoSpeakToggle.addEventListener('click', () => {
+  state.autoSpeak = !state.autoSpeak;
+  elements.autoSpeakToggle.textContent = `Lecture automatique : ${state.autoSpeak ? 'ON' : 'OFF'}`;
+  elements.autoSpeakToggle.setAttribute('aria-pressed', String(state.autoSpeak));
+});
 elements.speakAnswer.addEventListener('click', () => speak(state.lastAnswer, 'en-US'));
 elements.copyTranslation.addEventListener('click', () => copyText(state.lastTranslation));
 elements.copyAnswer.addEventListener('click', () => copyText(state.lastAnswer));
@@ -396,5 +437,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   });
 }
 
+preloadVoices();
 renderContexts();
 renderReplies(contexts[state.activeContext].replies);

@@ -22,15 +22,15 @@
       </header>
 
       <section class="home-screen" id="homeScreen" aria-labelledby="homeTitle">
-        <h2 id="homeTitle">Que se passe-t-il ?</h2>
+        <h2 id="homeTitle">MODE ORAL RAPIDE</h2>
         <div class="mode-grid">
           <button class="mode-card mode-listen" id="openListenMode" type="button">
             <span class="mode-icon">🇺🇸</span>
-            <span>IL ME PARLE ANGLAIS</span>
+            <span>🎙️ ÉCOUTER L’ANGLAIS</span>
           </button>
           <button class="mode-card mode-speak" id="openSpeakMode" type="button">
             <span class="mode-icon">🇫🇷</span>
-            <span>JE PARLE FRANÇAIS</span>
+            <span>🎙️ JE PARLE FRANÇAIS</span>
           </button>
         </div>
         <div class="context-strip" id="contextGrid" aria-label="Choisir le contexte"></div>
@@ -39,10 +39,10 @@
       <section class="flow-panel hidden" id="listenPanel" aria-labelledby="listenTitle">
         <button class="back-button" id="backFromListen" type="button">← Accueil</button>
         <p class="mode-label">IL ME PARLE ANGLAIS</p>
-        <h2 id="listenTitle">Appuie et laisse parler la personne</h2>
-        <button class="mic-hero" id="micButton" type="button" aria-label="Dicter une phrase anglaise">🎙️</button>
-        <textarea id="sourceText" rows="2" placeholder="Ou écris la phrase anglaise ici"></textarea>
-        <button class="primary action-full" id="translateButton" type="button">Traduire</button>
+        <h2 id="listenTitle">🎙️ ÉCOUTER L’ANGLAIS</h2>
+        <button class="mic-hero" id="micButton" type="button" aria-label="Écouter l’anglais">🎙️</button>
+        <textarea id="sourceText" rows="2" placeholder="Transcription anglaise automatique"></textarea>
+        <button class="secondary action-full written-only" id="translateButton" type="button">Mode écrit : traduire ce texte</button>
         <p class="status" id="status" role="status" aria-live="polite">Prêt.</p>
 
         <div class="result-block" id="listenResult">
@@ -65,10 +65,11 @@
       <section class="flow-panel hidden" id="speakPanel" aria-labelledby="speakTitle">
         <button class="back-button" id="backFromSpeak" type="button">← Accueil</button>
         <p class="mode-label">JE PARLE FRANÇAIS · Mode secours local — phrases limitées</p>
-        <h2 id="speakTitle">Parle ou écris en français</h2>
-        <button class="mic-hero french" id="answerMicButton" type="button" aria-label="Dicter une réponse française">🎙️</button>
-        <textarea id="answerText" rows="2" placeholder="Ou écris ta phrase en français, par exemple : Je voudrais payer l’addition s’il vous plaît."></textarea>
-        <button class="primary action-full" id="translateAnswerButton" type="button">Traduire en anglais américain naturel</button>
+        <h2 id="speakTitle">🎙️ JE PARLE FRANÇAIS</h2>
+        <button class="mic-hero french" id="answerMicButton" type="button" aria-label="Je parle français">🎙️</button>
+        <textarea id="answerText" rows="2" placeholder="Transcription française automatique"></textarea>
+        <button class="secondary action-full written-only" id="translateAnswerButton" type="button">Mode écrit : traduire ce texte</button>
+        <button class="secondary action-full" id="autoSpeakToggle" type="button" aria-pressed="false">Lecture automatique : OFF</button>
         <p class="status" id="answerStatus" role="status" aria-live="polite">Prêt.</p>
 
         <div class="result-block">
