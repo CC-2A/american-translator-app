@@ -1,0 +1,14 @@
+{
+  "name": "us-translator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Application mobile-first de traduction français / anglais américain pour voyageurs francophones aux États-Unis.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check src/app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
