@@ -3,52 +3,98 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#13294b" />
+    <meta name="theme-color" content="#102a43" />
+    <meta name="description" content="Traducteur français / anglais américain mobile-first pour voyager aux États-Unis." />
     <title>US Translator</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.svg" />
     <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="hero" aria-labelledby="app-title">
-        <p class="eyebrow">Voyage aux États-Unis</p>
-        <h1 id="app-title">US Translator</h1>
-        <p class="hero-text">Traduisez vite, écoutez la phrase et choisissez une réponse utile selon la situation.</p>
+        <div>
+          <p class="eyebrow">Compagnon de voyage aux États-Unis</p>
+          <h1 id="app-title">US Translator</h1>
+          <p class="hero-text">Comprendre, répondre et faire écouter une phrase claire en anglais américain, même sans IA disponible.</p>
+        </div>
+        <div class="hero-badge" aria-label="Application installable">PWA<br /><span>mobile</span></div>
       </section>
 
-      <section class="card translator" aria-label="Interface de traduction">
-        <div class="direction-control" role="group" aria-label="Sens de traduction">
-          <button class="toggle active" id="frToEn" type="button">Français → Anglais US</button>
-          <button class="toggle" id="enToFr" type="button">Anglais US → Français</button>
+      <section class="card conversation-card" aria-labelledby="conversationTitle">
+        <div class="section-heading stacked">
+          <div>
+            <p class="kicker">Mode conversation</p>
+            <h2 id="conversationTitle">1. La personne parle anglais</h2>
+          </div>
+          <button class="pill-button" id="conversationPreset" type="button">🇺🇸 Anglais → Français</button>
         </div>
-
-        <label for="sourceText" id="sourceLabel">Votre phrase en français</label>
-        <textarea id="sourceText" rows="5" placeholder="Ex. Je voudrais commander un café, s'il vous plaît."></textarea>
-
+        <textarea id="sourceText" rows="5" placeholder="Ex. Can I see your passport, please?" aria-describedby="conversationHelp"></textarea>
+        <p class="helper" id="conversationHelp">Dictez ou collez la phrase entendue. L’app utilise /api/translate si disponible, puis le secours local.</p>
         <div class="action-grid">
-          <button class="secondary" id="micButton" type="button">🎙️ Parler</button>
-          <button class="primary" id="translateButton" type="button">Traduire</button>
+          <button class="secondary big-button" id="micButton" type="button">🎙️ Dicter</button>
+          <button class="primary big-button" id="translateButton" type="button">Traduire</button>
         </div>
-        <p class="status" id="status" role="status" aria-live="polite">Prêt.</p>
+        <p class="status" id="status" role="status" aria-live="polite">Prêt pour une conversation.</p>
       </section>
 
       <section class="card result-card" aria-labelledby="translationTitle">
         <div class="section-heading">
-          <h2 id="translationTitle">Traduction</h2>
-          <button class="audio" id="speakTranslation" type="button" disabled>🔊 Faire écouter</button>
+          <div>
+            <p class="kicker">2. Traduction française</p>
+            <h2 id="translationTitle">Ce que cela veut dire</h2>
+          </div>
+          <div class="button-row">
+            <button class="ghost" id="copyTranslation" type="button" disabled>Copier</button>
+            <button class="audio" id="speakTranslation" type="button" disabled>🔊 Écouter</button>
+          </div>
         </div>
         <p class="translation-output" id="translationOutput">La traduction apparaîtra ici en grand.</p>
       </section>
 
+      <section class="card response-card" aria-labelledby="answerTitle">
+        <div class="section-heading stacked">
+          <div>
+            <p class="kicker">3. Répondre en français</p>
+            <h2 id="answerTitle">Votre réponse</h2>
+          </div>
+        </div>
+        <textarea id="answerText" rows="3" placeholder="Ex. Oui, bien sûr. Voici mon passeport."></textarea>
+        <div class="action-grid three-actions">
+          <button class="secondary" id="answerMicButton" type="button">🎙️ Dicter</button>
+          <button class="primary" id="translateAnswerButton" type="button">Traduire ma réponse</button>
+          <button class="ghost danger" id="clearButton" type="button">Effacer</button>
+        </div>
+        <div class="answer-output-wrap">
+          <p class="answer-label">À faire écouter en anglais américain</p>
+          <p class="answer-output" id="answerOutput">Votre réponse traduite apparaîtra ici.</p>
+          <div class="button-row align-end">
+            <button class="ghost" id="copyAnswer" type="button" disabled>Copier</button>
+            <button class="audio" id="speakAnswer" type="button" disabled>🔊 Faire écouter</button>
+          </div>
+        </div>
+      </section>
+
       <section class="card" aria-labelledby="replyTitle">
-        <h2 id="replyTitle">Réponses possibles</h2>
+        <div class="section-heading stacked">
+          <div>
+            <p class="kicker">Réponses rapides</p>
+            <h2 id="replyTitle">Phrases courtes, naturelles et polies</h2>
+          </div>
+        </div>
+        <div class="context-grid" id="contextGrid" aria-label="Contextes de voyage"></div>
         <div class="reply-list" id="replyList">
-          <p class="empty-state">Après une traduction, 2 ou 3 réponses adaptées seront proposées.</p>
+          <p class="empty-state">Après une traduction, choisissez une réponse adaptée au restaurant, hôtel, voiture, magasin, police/douane, urgence, direction ou paiement.</p>
         </div>
       </section>
 
       <section class="card" aria-labelledby="historyTitle">
         <div class="section-heading">
-          <h2 id="historyTitle">Historique récent</h2>
+          <div>
+            <p class="kicker">Mémo local</p>
+            <h2 id="historyTitle">Historique récent</h2>
+          </div>
           <button class="ghost" id="clearHistory" type="button">Effacer</button>
         </div>
         <ol class="history-list" id="historyList"></ol>
