@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#13294b" />
+    <title>US Translator</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="app-title">
+        <p class="eyebrow">Voyage aux États-Unis</p>
+        <h1 id="app-title">US Translator</h1>
+        <p class="hero-text">Traduisez vite, écoutez la phrase et choisissez une réponse utile selon la situation.</p>
+      </section>
+
+      <section class="card translator" aria-label="Interface de traduction">
+        <div class="direction-control" role="group" aria-label="Sens de traduction">
+          <button class="toggle active" id="frToEn" type="button">Français → Anglais US</button>
+          <button class="toggle" id="enToFr" type="button">Anglais US → Français</button>
+        </div>
+
+        <label for="sourceText" id="sourceLabel">Votre phrase en français</label>
+        <textarea id="sourceText" rows="5" placeholder="Ex. Je voudrais commander un café, s'il vous plaît."></textarea>
+
+        <div class="action-grid">
+          <button class="secondary" id="micButton" type="button">🎙️ Parler</button>
+          <button class="primary" id="translateButton" type="button">Traduire</button>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite">Prêt.</p>
+      </section>
+
+      <section class="card result-card" aria-labelledby="translationTitle">
+        <div class="section-heading">
+          <h2 id="translationTitle">Traduction</h2>
+          <button class="audio" id="speakTranslation" type="button" disabled>🔊 Faire écouter</button>
+        </div>
+        <p class="translation-output" id="translationOutput">La traduction apparaîtra ici en grand.</p>
+      </section>
+
+      <section class="card" aria-labelledby="replyTitle">
+        <h2 id="replyTitle">Réponses possibles</h2>
+        <div class="reply-list" id="replyList">
+          <p class="empty-state">Après une traduction, 2 ou 3 réponses adaptées seront proposées.</p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="historyTitle">
+        <div class="section-heading">
+          <h2 id="historyTitle">Historique récent</h2>
+          <button class="ghost" id="clearHistory" type="button">Effacer</button>
+        </div>
+        <ol class="history-list" id="historyList"></ol>
+      </section>
+    </main>
+
+    <script src="src/app.js" type="module"></script>
+  </body>
+</html>

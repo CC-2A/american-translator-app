@@ -1,0 +1,215 @@
+:root {
+  color-scheme: light;
+  --blue: #13294b;
+  --blue-light: #1f4f8f;
+  --red: #c7362f;
+  --cream: #f7f2e9;
+  --card: #ffffff;
+  --text: #182033;
+  --muted: #667085;
+  --border: #e2e8f0;
+  --shadow: 0 18px 40px rgba(19, 41, 75, 0.14);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #eaf2ff 0%, var(--cream) 42%, #ffffff 100%);
+  color: var(--text);
+}
+
+button, textarea { font: inherit; }
+
+.app-shell {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 22px 16px 40px;
+}
+
+.hero {
+  padding: 24px 4px 16px;
+  text-align: left;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--red);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1, h2, p { margin-top: 0; }
+
+h1 {
+  margin-bottom: 10px;
+  color: var(--blue);
+  font-size: clamp(2.4rem, 12vw, 4.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+h2 {
+  margin-bottom: 14px;
+  color: var(--blue);
+  font-size: 1.25rem;
+}
+
+.hero-text {
+  max-width: 34rem;
+  color: #344054;
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+.card {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.direction-control {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.toggle, .primary, .secondary, .audio, .ghost {
+  min-height: 54px;
+  border: 0;
+  border-radius: 18px;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+}
+
+button:active { transform: scale(0.98); }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.toggle {
+  padding: 12px 14px;
+  background: #eef4ff;
+  color: var(--blue);
+}
+
+.toggle.active {
+  background: var(--blue);
+  color: white;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 140px;
+  padding: 16px;
+  border: 2px solid var(--border);
+  border-radius: 22px;
+  color: var(--text);
+  font-size: 1.2rem;
+  line-height: 1.45;
+  outline: none;
+}
+
+textarea:focus {
+  border-color: var(--blue-light);
+  box-shadow: 0 0 0 4px rgba(31, 79, 143, 0.12);
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.primary { background: var(--red); color: white; font-size: 1.12rem; }
+.secondary { background: var(--blue); color: white; }
+.audio { padding: 0 14px; background: #e8f5ee; color: #087443; }
+.ghost { min-height: 42px; padding: 0 12px; background: #f2f4f7; color: var(--muted); }
+
+.status {
+  min-height: 22px;
+  margin: 12px 2px 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.translation-output {
+  margin-bottom: 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: #f8fafc;
+  color: var(--blue);
+  font-size: clamp(1.45rem, 7vw, 2.25rem);
+  font-weight: 850;
+  line-height: 1.18;
+}
+
+.reply-list {
+  display: grid;
+  gap: 10px;
+}
+
+.reply-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: #fbfdff;
+}
+
+.reply-card p { margin: 0; font-size: 1.08rem; font-weight: 750; }
+.reply-card small { display: block; margin-top: 4px; color: var(--muted); font-weight: 600; }
+
+.empty-state { margin-bottom: 0; color: var(--muted); }
+
+.history-list {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.history-list:empty::after {
+  content: "Aucune traduction pour le moment.";
+  color: var(--muted);
+}
+
+.history-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-list strong { display: block; color: var(--blue); }
+.history-list span { color: var(--muted); }
+
+@media (min-width: 560px) {
+  .app-shell { padding-inline: 28px; }
+  .direction-control { grid-template-columns: 1fr 1fr; }
+  .card { padding: 24px; }
+}
