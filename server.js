@@ -82,6 +82,9 @@ const enToFrDictionary = [
 const unavailableFallbackMessage = 'Traduction IA non connectée. Cette phrase n’est pas disponible en mode secours local.';
 
 const frToEnDictionary = new Map([
+  ['bonjour j’espère que tout va bien pour vous', ['Hi, I hope you’re doing well.', 'Hi, I hope you are doing well.']],
+  ['bonjour j’espère que vous allez bien', ['Hi, I hope you’re doing well.', 'Hi, I hope you are doing well.']],
+  ['bonsoir comment allez-vous', ['Good evening, how are you doing?', 'Good evening, how are you?']],
   ['bonjour comment allez-vous', ['Hi, how are you doing?', 'Hello, how are you?']],
   ['comment allez-vous', ['How are you doing?', 'How are you?']],
   ['j’espère que tout va bien pour vous', ['I hope you’re doing well.', 'I hope you are doing well.']],
@@ -110,6 +113,47 @@ const frToEnDictionary = new Map([
   ['j’ai besoin d’aide', ['I need help.', 'I need help.']],
   ['appelez une ambulance', ['Please call an ambulance.', 'Please call an ambulance.']],
 ]);
+
+function buildUnavailableTranslation(base) {
+  return {
+    ...base,
+    hasTranslation: false,
+    canSpeak: false,
+    error: true,
+    errorMessage: unavailableFallbackMessage,
+    message: unavailableFallbackMessage,
+    literalEnglishText: '',
+    americanEnglishText: '',
+  };
+}
+
+function buildAvailableTranslation(base, sourceText, match) {
+  const validation = validateAmericanEnglishResult(sourceText, match[0]);
+  if (!validation.canSpeak) return buildUnavailableTranslation(base);
+  return {
+    ...base,
+    hasTranslation: true,
+    canSpeak: true,
+    errorMessage: '',
+    literalEnglishText: match[1],
+    americanEnglishText: validation.americanEnglishText,
+  };
+}
+
+function getLocalFrenchMatch(text) {
+  const key = normalizeFrenchKey(text);
+  const directMatch = normalizedFrToEnDictionary.get(key);
+  if (directMatch) return directMatch;
+
+  const greetingMatch = key.match(/^(bonjour|salut|bonsoir) (.+)$/);
+  if (!greetingMatch) return null;
+  const [, greeting, rest] = greetingMatch;
+  const restMatch = normalizedFrToEnDictionary.get(rest);
+  if (!restMatch) return null;
+  const greetingText = greeting === 'bonsoir' ? 'Good evening' : 'Hi';
+  const joinGreeting = (phrase) => `${greetingText}, ${/^I(?:\b|[’'])/.test(phrase) ? phrase : phrase.charAt(0).toLowerCase() + phrase.slice(1)}`;
+  return [joinGreeting(restMatch[0]), joinGreeting(restMatch[1])];
+}
 
 function sendJson(response, status, payload) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -151,9 +195,11 @@ export function cleanTranslationText(text = '') {
 function normalizeFrenchKey(text = '') {
   return cleanTranslationText(text)
     .toLowerCase()
-    .normalize('NFC')
-    .replace(/[?!.:,;]+/g, ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9’' ]+/g, ' ')
     .replace(/[’']/g, '’')
+    .replace(/\bj\s+(?=ai|espere|avais|aimerais|habite|arrive)/g, 'j’')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -163,6 +209,7 @@ const unavailableTranslationPatterns = [
   /phrase non disponible en mode secours/i,
   /mode secours local/i,
   /erreur/i,
+  /api non connectée/i,
   /api non disponible/i,
   /translation unavailable/i,
   /ai not connected/i,
@@ -210,6 +257,8 @@ function buildSuggestions(context) {
   });
 }
 
+const normalizedFrToEnDictionary = new Map(Array.from(frToEnDictionary, ([key, value]) => [normalizeFrenchKey(key), value]));
+
 function translateLocal(text, direction, context) {
   const sourceLanguage = direction === 'fr-en' ? 'fr-FR' : 'en-US';
   const targetLanguage = direction === 'fr-en' ? 'en-US' : 'fr-FR';
@@ -220,15 +269,10 @@ function translateLocal(text, direction, context) {
     return { ...base, frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.', frenchMeaning: match?.[1] || 'Sens approximatif détecté localement.', literalEnglishText: text, americanEnglishText: cleanTranslationText(text) };
   }
 
-  const match = frToEnDictionary.get(normalizeFrenchKey(text));
-  if (!match) {
-    return { ...base, error: true, message: unavailableFallbackMessage, frenchText: text, frenchMeaning: text, literalEnglishText: '', americanEnglishText: '', canSpeak: false };
-  }
-  const validation = validateAmericanEnglishResult(text, match[0]);
-  if (!validation.canSpeak) {
-    return { ...base, error: true, message: unavailableFallbackMessage, frenchText: text, frenchMeaning: text, literalEnglishText: '', americanEnglishText: '', canSpeak: false };
-  }
-  return { ...base, frenchText: text, frenchMeaning: text, literalEnglishText: match[1], americanEnglishText: validation.americanEnglishText, canSpeak: true };
+  const localizedBase = { ...base, frenchText: text, frenchMeaning: text };
+  const match = getLocalFrenchMatch(text);
+  if (!match) return buildUnavailableTranslation(localizedBase);
+  return buildAvailableTranslation(localizedBase, text, match);
 }
 
 async function handleTranslate(request, response) {

@@ -87,9 +87,11 @@ function cleanTranslationText(text = '') {
 function normalizeFrenchKey(text = '') {
   return cleanTranslationText(text)
     .toLowerCase()
-    .normalize('NFC')
-    .replace(/[?!.:,;]+/g, ' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9’' ]+/g, ' ')
     .replace(/[’']/g, '’')
+    .replace(/\bj\s+(?=ai|espere|avais|aimerais|habite|arrive)/g, 'j’')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -99,6 +101,7 @@ const unavailableTranslationPatterns = [
   /phrase non disponible en mode secours/i,
   /mode secours local/i,
   /erreur/i,
+  /api non connectée/i,
   /api non disponible/i,
   /translation unavailable/i,
   /ai not connected/i,
@@ -153,6 +156,9 @@ function normalizeSuggestions(replies = []) {
 const unavailableFallbackMessage = 'Traduction IA non connectée. Cette phrase n’est pas disponible en mode secours local.';
 
 const frToEnDictionary = new Map([
+  ['bonjour j’espère que tout va bien pour vous', ['Hi, I hope you’re doing well.', 'Hi, I hope you are doing well.']],
+  ['bonjour j’espère que vous allez bien', ['Hi, I hope you’re doing well.', 'Hi, I hope you are doing well.']],
+  ['bonsoir comment allez-vous', ['Good evening, how are you doing?', 'Good evening, how are you?']],
   ['bonjour comment allez-vous', ['Hi, how are you doing?', 'Hello, how are you?']],
   ['comment allez-vous', ['How are you doing?', 'How are you?']],
   ['j’espère que tout va bien pour vous', ['I hope you’re doing well.', 'I hope you are doing well.']],
@@ -182,7 +188,55 @@ const frToEnDictionary = new Map([
   ['appelez une ambulance', ['Please call an ambulance.', 'Please call an ambulance.']],
 ]);
 
-const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', waitingWorker: null, currentMode: 'home', americanVoice: null, autoSpeak: false, activeRecognition: null };
+const normalizedFrToEnDictionary = new Map(Array.from(frToEnDictionary, ([key, value]) => [normalizeFrenchKey(key), value]));
+
+function buildUnavailableTranslation(base) {
+  return {
+    ...base,
+    hasTranslation: false,
+    canSpeak: false,
+    error: true,
+    errorMessage: unavailableFallbackMessage,
+    message: unavailableFallbackMessage,
+    literalEnglishText: '',
+    americanEnglishText: '',
+  };
+}
+
+function buildAvailableTranslation(base, sourceText, match) {
+  const validation = validateAmericanEnglishResult(sourceText, match[0]);
+  if (!validation.canSpeak) return buildUnavailableTranslation(base);
+  return {
+    ...base,
+    hasTranslation: true,
+    canSpeak: true,
+    errorMessage: '',
+    literalEnglishText: match[1],
+    americanEnglishText: validation.americanEnglishText,
+  };
+}
+
+function cleanSpokenFrenchSource(text = '') {
+  return cleanTranslationText(text).replace(/^(?:🇫🇷\s*)?ce que j[’']ai dit\s*:?\s*/i, '').trim();
+}
+
+function getLocalFrenchMatch(text) {
+  const key = normalizeFrenchKey(text);
+  const directMatch = normalizedFrToEnDictionary.get(key);
+  if (directMatch) return directMatch;
+
+  const greetingMatch = key.match(/^(bonjour|salut|bonsoir) (.+)$/);
+  if (!greetingMatch) return null;
+  const [, greeting, rest] = greetingMatch;
+  const restMatch = normalizedFrToEnDictionary.get(rest);
+  if (!restMatch) return null;
+  const greetingText = greeting === 'bonsoir' ? 'Good evening' : 'Hi';
+  const joinGreeting = (phrase) => `${greetingText}, ${/^I(?:\b|[’'])/.test(phrase) ? phrase : phrase.charAt(0).toLowerCase() + phrase.slice(1)}`;
+  return [joinGreeting(restMatch[0]), joinGreeting(restMatch[1])];
+}
+
+const emptyTranslationState = { hasTranslation: false, canSpeak: false, errorMessage: '', americanEnglishText: '' };
+const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', answerTranslation: { ...emptyTranslationState }, waitingWorker: null, currentMode: 'home', americanVoice: null, autoSpeak: false, activeRecognition: null };
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
@@ -241,15 +295,9 @@ function offlineTranslate(text, direction, context) {
   }
 
   const base = { sourceText: text, sourceLanguage, targetLanguage, frenchText: text, frenchMeaning: text, context, suggestions: fallbackSuggestions, mode: 'local', simulated: true };
-  const match = frToEnDictionary.get(normalizeFrenchKey(text));
-  if (!match) {
-    return { ...base, error: true, message: unavailableFallbackMessage, literalEnglishText: '', americanEnglishText: '', canSpeak: false };
-  }
-  const validation = validateAmericanEnglishResult(text, match[0]);
-  if (!validation.canSpeak) {
-    return { ...base, error: true, message: unavailableFallbackMessage, literalEnglishText: '', americanEnglishText: '', canSpeak: false };
-  }
-  return { ...base, literalEnglishText: match[1], americanEnglishText: validation.americanEnglishText, canSpeak: true };
+  const match = getLocalFrenchMatch(text);
+  if (!match) return buildUnavailableTranslation(base);
+  return buildAvailableTranslation(base, text, match);
 }
 
 async function translateIncoming() {
@@ -268,24 +316,31 @@ async function translateIncoming() {
 }
 
 async function translateAnswer() {
-  const text = cleanTranslationText(elements.answerText.value);
+  const text = cleanSpokenFrenchSource(elements.answerText.value);
   if (!text) return focusWithStatus(elements.answerText, 'Dictez ou écrivez votre réponse en français.');
   updateStatus('Je traduis…');
   const result = await requestTranslation(text, 'fr-en', state.activeContext);
   const validation = validateAmericanEnglishResult(text, result.americanEnglishText);
-  const cleanAnswer = result.canSpeak === false ? '' : validation.americanEnglishText;
+  const hasTranslation = result.hasTranslation === true && result.canSpeak === true && validation.canSpeak;
+  const cleanAnswer = hasTranslation ? validation.americanEnglishText : '';
   state.lastAnswer = cleanAnswer;
-  elements.answerFrenchOutput.textContent = result.frenchText || text;
-  const cannotSpeak = result.error || !validation.canSpeak || result.canSpeak === false;
+  state.answerTranslation = {
+    hasTranslation,
+    canSpeak: hasTranslation,
+    errorMessage: hasTranslation ? '' : (result.errorMessage || result.message || unavailableFallbackMessage),
+    americanEnglishText: cleanAnswer,
+  };
+  elements.answerFrenchOutput.textContent = text;
+  const cannotSpeak = !state.answerTranslation.hasTranslation || !state.answerTranslation.canSpeak;
   elements.answerListenTitle.classList.toggle('hidden', cannotSpeak);
   elements.answerOutput.classList.toggle('hidden', cannotSpeak);
   elements.answerError.classList.toggle('hidden', !cannotSpeak);
   if (cannotSpeak) {
     elements.answerOutput.textContent = '';
-    elements.answerError.textContent = result.message || unavailableFallbackMessage;
+    elements.answerError.textContent = state.answerTranslation.errorMessage;
     elements.speakAnswer.disabled = true;
     elements.copyAnswer.disabled = true;
-    updateStatus(result.message || unavailableFallbackMessage);
+    updateStatus(state.answerTranslation.errorMessage);
     return;
   }
   elements.answerError.textContent = '';
@@ -417,6 +472,7 @@ function restartSpeak() {
   elements.speakAnswer.disabled = true;
   elements.copyAnswer.disabled = true;
   state.lastAnswer = '';
+  state.answerTranslation = { ...emptyTranslationState };
   updateStatus('Prêt.');
   elements.answerMicButton.focus();
 }
@@ -440,7 +496,10 @@ elements.autoSpeakToggle.addEventListener('click', () => {
   elements.autoSpeakToggle.textContent = `Lecture automatique : ${state.autoSpeak ? 'ON' : 'OFF'}`;
   elements.autoSpeakToggle.setAttribute('aria-pressed', String(state.autoSpeak));
 });
-elements.speakAnswer.addEventListener('click', () => speak(state.lastAnswer, 'en-US'));
+elements.speakAnswer.addEventListener('click', () => {
+  if (!state.answerTranslation.hasTranslation || !state.answerTranslation.canSpeak) return updateStatus('Audio désactivé : aucune vraie phrase anglaise disponible.');
+  speak(state.answerTranslation.americanEnglishText, 'en-US');
+});
 elements.copyTranslation.addEventListener('click', () => copyText(state.lastTranslation));
 elements.copyAnswer.addEventListener('click', () => copyText(state.lastAnswer));
 elements.restartListen.addEventListener('click', restartListen);
