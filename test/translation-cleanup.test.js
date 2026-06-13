@@ -14,7 +14,9 @@ test('cleanTranslationText removes parasite prefixes and quotes', () => {
 test('French-to-American-English local translations stay clean and speakable only when known', () => {
   const cases = [
     ['bonjour comment allez-vous', 'Hi, how are you doing?'],
+    ['bonjour j’espère que tout va bien pour vous', 'Hi, I hope you’re doing well.'],
     ['j’espère que tout va bien pour vous', 'I hope you’re doing well.'],
+    ['bonjour j’espère que vous allez bien', 'Hi, I hope you’re doing well.'],
     ['Please help me with this: bonjour comment allez-vous', 'Hi, how are you doing?'],
     ['Translate this: je voudrais payer l’addition s’il vous plaît', 'Can I get the check, please?'],
     ['In American English: où sont les toilettes', 'Where’s the restroom?'],
@@ -23,6 +25,7 @@ test('French-to-American-English local translations stay clean and speakable onl
   for (const [input, expected] of cases) {
     const result = translateLocal(cleanTranslationText(input), 'fr-en', 'restaurant');
     assert.equal(result.error, undefined);
+    assert.equal(result.hasTranslation, true);
     assert.equal(result.canSpeak, true);
     assert.equal(result.americanEnglishText, expected);
     assert.doesNotMatch(result.americanEnglishText, forbiddenPrefix);
@@ -34,6 +37,8 @@ test('unknown French phrase returns controlled unavailable fallback with audio d
   const result = translateLocal('phrase française inconnue', 'fr-en', 'restaurant');
   assert.equal(result.error, true);
   assert.equal(result.message, unavailable);
+  assert.equal(result.errorMessage, unavailable);
+  assert.equal(result.hasTranslation, false);
   assert.equal(result.americanEnglishText, '');
   assert.equal(result.frenchText, 'phrase française inconnue');
   assert.equal(result.canSpeak, false);
@@ -55,6 +60,7 @@ test('unavailable messages are never valid American English for speech', () => {
     const result = translateLocal(message, 'fr-en', 'restaurant');
     assert.equal(result.error, true, message);
     assert.equal(result.americanEnglishText, '', message);
+    assert.equal(result.hasTranslation, false, message);
     assert.equal(result.canSpeak, false, message);
   }
 });
@@ -81,6 +87,10 @@ test('minimum local French dictionary covers required traveler phrases', () => {
     ['je voudrais une chambre', 'I’d like a room.'],
     ['j’ai besoin d’aide', 'I need help.'],
     ['appelez une ambulance', 'Please call an ambulance.'],
+    ['bonjour j’espère que tout va bien pour vous', 'Hi, I hope you’re doing well.'],
+    ['bonjour j’espère que vous allez bien', 'Hi, I hope you’re doing well.'],
+    ['bonjour comment allez-vous', 'Hi, how are you doing?'],
+    ['bonsoir comment allez-vous', 'Good evening, how are you doing?'],
     ['comment allez-vous', 'How are you doing?'],
     ['j’espère que vous allez bien', 'I hope you’re doing well.'],
     ['j’espère que tout va bien', 'I hope everything is going well.'],
@@ -90,6 +100,23 @@ test('minimum local French dictionary covers required traveler phrases', () => {
 
   for (const [input, expected] of cases) {
     const result = translateLocal(input, 'fr-en', 'restaurant');
+    assert.equal(result.canSpeak, true, input);
+    assert.equal(result.americanEnglishText, expected, input);
+  }
+});
+
+
+test('local normalization handles punctuation, accents, whitespace, and greeting prefixes', () => {
+  const cases = [
+    ['  Bonjour,   j espere que tout va bien pour vous !!! ', 'Hi, I hope you’re doing well.'],
+    ['BONJOUR, COMMENT ALLEZ VOUS ?', 'Hi, how are you doing?'],
+    ['Salut j’espère que vous allez bien', 'Hi, I hope you’re doing well.'],
+    ['Bonsoir, comment allez vous ?', 'Good evening, how are you doing?'],
+  ];
+
+  for (const [input, expected] of cases) {
+    const result = translateLocal(input, 'fr-en', 'restaurant');
+    assert.equal(result.hasTranslation, true, input);
     assert.equal(result.canSpeak, true, input);
     assert.equal(result.americanEnglishText, expected, input);
   }
