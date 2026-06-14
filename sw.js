@@ -1,5 +1,5 @@
-const CACHE_NAME = 'us-translator-natural-american-v2026-06-13-03';
-const APP_SHELL = ['./', './index.html', './src/styles.css', './src/app.js', './manifest.json', './icon.svg'];
+const CACHE_NAME = 'us-translator-offline-v1';
+const APP_SHELL = ['./', './index.html', './src/styles.css', './src/app.js', './src/offlinePhrases.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
