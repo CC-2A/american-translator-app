@@ -32,6 +32,10 @@
             <span class="mode-icon">🇫🇷</span>
             <span>🎙️ JE PARLE FRANÇAIS</span>
           </button>
+          <button class="mode-card mode-offline" id="openOfflineLibrary" type="button">
+            <span class="mode-icon">📚</span>
+            <span>Voir les phrases hors réseau</span>
+          </button>
         </div>
         <div class="context-strip" id="contextGrid" aria-label="Choisir le contexte"></div>
       </section>
@@ -84,6 +88,15 @@
             <button class="secondary" id="restartSpeak" type="button">Recommencer</button>
           </div>
         </div>
+      </section>
+
+      <section class="flow-panel hidden" id="offlinePanel" aria-labelledby="offlineTitle">
+        <button class="back-button" id="backFromOffline" type="button">← Accueil</button>
+        <p class="mode-label">Mode hors réseau — phrase locale</p>
+        <h2 id="offlineTitle">📚 Phrases hors réseau</h2>
+        <textarea id="offlineSearch" rows="1" placeholder="Rechercher : addition, hôtel, urgence…"></textarea>
+        <div class="context-strip offline-categories" id="offlineCategoryList" aria-label="Catégories hors réseau"></div>
+        <div class="reply-list offline-list" id="offlinePhraseList"></div>
       </section>
     </main>
     <script src="src/app.js" type="module"></script>

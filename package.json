@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check src/app.js",
+    "check": "node --check server.js && node --check src/app.js && node --check src/offlinePhrases.js",
     "test": "node --test"
   },
   "engines": {

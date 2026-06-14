@@ -1,4 +1,5 @@
-const CACHE_VERSION = '2026.06.13-fast-oral-mode';
+import { findOfflinePhrase, offlineCategories, offlinePhrases } from './offlinePhrases.js';
+const CACHE_VERSION = 'us-translator-offline-v1';
 
 const contexts = {
   restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter|restroom/i, replies: ['Could you say that again, please?', 'Can I get this one, please?', 'Can I get the check, please?'] },
@@ -203,7 +204,7 @@ function buildUnavailableTranslation(base) {
   };
 }
 
-function buildAvailableTranslation(base, sourceText, match) {
+function buildAvailableTranslation(base, sourceText, match, offlineMatch = null) {
   const validation = validateAmericanEnglishResult(sourceText, match[0]);
   if (!validation.canSpeak) return buildUnavailableTranslation(base);
   return {
@@ -213,6 +214,8 @@ function buildAvailableTranslation(base, sourceText, match) {
     errorMessage: '',
     literalEnglishText: match[1],
     americanEnglishText: validation.americanEnglishText,
+    offlinePhraseId: offlineMatch?.phrase?.id || '',
+    confidence: offlineMatch?.confidence || 1,
   };
 }
 
@@ -236,13 +239,13 @@ function getLocalFrenchMatch(text) {
 }
 
 const emptyTranslationState = { hasTranslation: false, canSpeak: false, errorMessage: '', americanEnglishText: '' };
-const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', answerTranslation: { ...emptyTranslationState }, waitingWorker: null, currentMode: 'home', americanVoice: null, autoSpeak: false, activeRecognition: null };
+const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: '', answerTranslation: { ...emptyTranslationState }, waitingWorker: null, currentMode: 'home', americanVoice: null, autoSpeak: false, activeRecognition: null, offlineCategoryFilter: 'all' };
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   homeScreen: $('#homeScreen'), listenPanel: $('#listenPanel'), speakPanel: $('#speakPanel'), contextGrid: $('#contextGrid'),
   sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
-  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerListenTitle: $('#answerListenTitle'), answerOutput: $('#answerOutput'), answerError: $('#answerError'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'), autoSpeakToggle: $('#autoSpeakToggle'),
+  answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerListenTitle: $('#answerListenTitle'), answerOutput: $('#answerOutput'), answerError: $('#answerError'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'), autoSpeakToggle: $('#autoSpeakToggle'), openOfflineLibrary: $('#openOfflineLibrary'), offlinePanel: $('#offlinePanel'), backFromOffline: $('#backFromOffline'), offlineSearch: $('#offlineSearch'), offlineCategoryList: $('#offlineCategoryList'), offlinePhraseList: $('#offlinePhraseList'),
 };
 
 function showMode(mode) {
@@ -250,8 +253,10 @@ function showMode(mode) {
   elements.homeScreen.classList.toggle('hidden', mode !== 'home');
   elements.listenPanel.classList.toggle('hidden', mode !== 'listen');
   elements.speakPanel.classList.toggle('hidden', mode !== 'speak');
+  elements.offlinePanel.classList.toggle('hidden', mode !== 'offline');
   if (mode === 'listen') elements.micButton.focus();
   if (mode === 'speak') elements.answerMicButton.focus();
+  if (mode === 'offline') { renderOfflineLibrary(); elements.offlineSearch.focus(); }
 }
 
 function detectContext(text = '') {
@@ -295,9 +300,9 @@ function offlineTranslate(text, direction, context) {
   }
 
   const base = { sourceText: text, sourceLanguage, targetLanguage, frenchText: text, frenchMeaning: text, context, suggestions: fallbackSuggestions, mode: 'local', simulated: true };
-  const match = getLocalFrenchMatch(text);
-  if (!match) return buildUnavailableTranslation(base);
-  return buildAvailableTranslation(base, text, match);
+  const offlineMatch = findOfflinePhrase(text, { category: context });
+  if (!offlineMatch) return buildUnavailableTranslation(base);
+  return buildAvailableTranslation(base, text, [offlineMatch.phrase.americanEnglishText, offlineMatch.phrase.frenchMeaning], offlineMatch);
 }
 
 async function translateIncoming() {
@@ -312,7 +317,7 @@ async function translateIncoming() {
   elements.translationOutput.textContent = `🇫🇷 ${result.frenchText}`;
   elements.copyTranslation.disabled = false;
   renderReplies(result.suggestions);
-  updateStatus(result.simulated ? 'Prêt — mode secours local limité.' : 'Prêt.');
+  updateStatus(result.simulated ? 'Prêt — mode secours local.' : 'Prêt.');
 }
 
 async function translateAnswer() {
@@ -345,10 +350,13 @@ async function translateAnswer() {
   }
   elements.answerError.textContent = '';
   elements.answerOutput.textContent = `🇺🇸 Anglais américain naturel :
-${cleanAnswer}`;
+${cleanAnswer}
+
+🇫🇷 Sens :
+${result.frenchMeaning || text}`;
   elements.speakAnswer.disabled = false;
   elements.copyAnswer.disabled = false;
-  updateStatus(result.simulated ? 'Prêt — mode secours local limité.' : 'Prêt.');
+  updateStatus(result.simulated ? 'Mode hors réseau — phrase locale' : 'Prêt.');
   if (state.autoSpeak) speak(cleanAnswer, 'en-US');
 }
 
@@ -386,6 +394,52 @@ function renderReplies(replies) {
     actions.append(listen, copy);
     card.append(phrase, actions);
     elements.replyList.append(card);
+  });
+}
+
+
+function renderOfflineLibrary() {
+  elements.offlineCategoryList.innerHTML = '';
+  const categories = { all: 'Toutes', ...offlineCategories };
+  Object.entries(categories).forEach(([key, label]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `context-chip ${state.offlineCategoryFilter === key ? 'active' : ''}`;
+    button.textContent = label;
+    button.addEventListener('click', () => { state.offlineCategoryFilter = key; renderOfflineLibrary(); });
+    elements.offlineCategoryList.append(button);
+  });
+
+  const query = elements.offlineSearch.value.trim();
+  const normalizedQuery = normalizeFrenchKey(query);
+  const phrases = offlinePhrases.filter((phrase) => {
+    const categoryOk = state.offlineCategoryFilter === 'all' || phrase.category === state.offlineCategoryFilter;
+    if (!categoryOk) return false;
+    if (!normalizedQuery) return true;
+    return [phrase.frenchMeaning, phrase.americanEnglishText, ...(phrase.frenchVariants || []), ...(phrase.keywords || [])].some((value) => normalizeFrenchKey(value).includes(normalizedQuery));
+  });
+
+  elements.offlinePhraseList.innerHTML = '';
+  phrases.forEach((phrase) => {
+    const card = document.createElement('article');
+    card.className = 'reply-card offline-phrase-card';
+    const content = document.createElement('p');
+    content.innerHTML = `<span class="language-line">🇫🇷 ${phrase.frenchMeaning}</span><span class="language-line english-line">🇺🇸 ${phrase.americanEnglishText}</span><span class="offline-badge">${offlineCategories[phrase.category]}</span>`;
+    const actions = document.createElement('div');
+    actions.className = 'mini-actions';
+    const listen = document.createElement('button');
+    listen.className = 'primary';
+    listen.type = 'button';
+    listen.textContent = '🔊 Écouter';
+    listen.addEventListener('click', () => speak(phrase.americanEnglishText, 'en-US'));
+    const use = document.createElement('button');
+    use.className = 'secondary';
+    use.type = 'button';
+    use.textContent = 'Utiliser';
+    use.addEventListener('click', () => { showMode('speak'); elements.answerText.value = phrase.frenchVariants[0]; translateAnswer(); });
+    actions.append(listen, use);
+    card.append(content, actions);
+    elements.offlinePhraseList.append(card);
   });
 }
 
@@ -485,8 +539,11 @@ function updateStatus(message) {
 
 $('#openListenMode').addEventListener('click', () => showMode('listen'));
 $('#openSpeakMode').addEventListener('click', () => showMode('speak'));
+elements.openOfflineLibrary.addEventListener('click', () => showMode('offline'));
 $('#backFromListen').addEventListener('click', () => showMode('home'));
 $('#backFromSpeak').addEventListener('click', () => showMode('home'));
+elements.backFromOffline.addEventListener('click', () => showMode('home'));
+elements.offlineSearch.addEventListener('input', renderOfflineLibrary);
 elements.translateButton.addEventListener('click', translateIncoming);
 elements.micButton.addEventListener('click', () => startVoiceInput(elements.sourceText, 'en-US', translateIncoming));
 elements.answerMicButton.addEventListener('click', () => startVoiceInput(elements.answerText, 'fr-FR', translateAnswer));

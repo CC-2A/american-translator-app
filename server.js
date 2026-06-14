@@ -1,3 +1,4 @@
+import { findOfflinePhrase } from './src/offlinePhrases.js';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
@@ -127,7 +128,7 @@ function buildUnavailableTranslation(base) {
   };
 }
 
-function buildAvailableTranslation(base, sourceText, match) {
+function buildAvailableTranslation(base, sourceText, match, offlineMatch = null) {
   const validation = validateAmericanEnglishResult(sourceText, match[0]);
   if (!validation.canSpeak) return buildUnavailableTranslation(base);
   return {
@@ -137,6 +138,8 @@ function buildAvailableTranslation(base, sourceText, match) {
     errorMessage: '',
     literalEnglishText: match[1],
     americanEnglishText: validation.americanEnglishText,
+    offlinePhraseId: offlineMatch?.phrase?.id || '',
+    confidence: offlineMatch?.confidence || 1,
   };
 }
 
@@ -270,9 +273,9 @@ function translateLocal(text, direction, context) {
   }
 
   const localizedBase = { ...base, frenchText: text, frenchMeaning: text };
-  const match = getLocalFrenchMatch(text);
-  if (!match) return buildUnavailableTranslation(localizedBase);
-  return buildAvailableTranslation(localizedBase, text, match);
+  const offlineMatch = findOfflinePhrase(text, { category: context });
+  if (!offlineMatch) return buildUnavailableTranslation(localizedBase);
+  return buildAvailableTranslation(localizedBase, text, [offlineMatch.phrase.americanEnglishText, offlineMatch.phrase.frenchMeaning], offlineMatch);
 }
 
 async function handleTranslate(request, response) {
