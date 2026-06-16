@@ -105,6 +105,34 @@ test('minimum local French dictionary covers required traveler phrases', () => {
   }
 });
 
+test('offline mode builds essential hotel and restaurant requests from smart templates', () => {
+  const cases = [
+    ['il me faudrait des serviettes de bain', 'hotel', 'Could I get some bath towels, please?'],
+    ['j’aurais besoin de serviettes propres', 'hotel', 'Could I get some clean towels, please?'],
+    ['il manque du papier toilette', 'hotel', 'We’re out of toilet paper.'],
+    ['ma carte de chambre ne fonctionne pas', 'hotel', 'My key card isn’t working.'],
+    ['il me faudrait des serviettes', 'restaurant', 'Could I get some napkins, please?'],
+    ['je voudrais payer l’addition', 'restaurant', 'Can I get the check, please?'],
+    ['bonjour il me faudrait des serviettes de bain s’il vous plaît', 'hotel', 'Hi, could I get some bath towels, please?'],
+  ];
+
+  for (const [input, context, expected] of cases) {
+    const result = translateLocal(input, 'fr-en', context);
+    assert.equal(result.hasTranslation, true, input);
+    assert.equal(result.canSpeak, true, input);
+    assert.equal(result.americanEnglishText, expected, input);
+    assert.doesNotMatch(result.americanEnglishText, /Traduction IA non connectée|mode secours/i, input);
+  }
+});
+
+test('offline errors remain non-speakable and never leak into listenable output', () => {
+  const result = translateLocal('phrase française inconnue sans modèle', 'fr-en', 'hotel');
+  assert.equal(result.hasTranslation, false);
+  assert.equal(result.canSpeak, false);
+  assert.equal(result.americanEnglishText, '');
+  assert.equal(result.error, true);
+});
+
 
 test('local normalization handles punctuation, accents, whitespace, and greeting prefixes', () => {
   const cases = [
