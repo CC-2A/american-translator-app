@@ -156,3 +156,43 @@ test('suggested replies never include technical parasite prefixes', () => {
     assert.doesNotMatch(suggestion.americanEnglishText, forbiddenPrefix);
   }
 });
+
+test('English listen mode translates only exact offline dictionary phrases', () => {
+  const cases = new Map([
+    ['Can I see your driver’s license?', 'Puis-je voir votre permis de conduire ?'],
+    ['Cash or card?', 'Espèces ou carte ?'],
+    ['Do you have a reservation?', 'Avez-vous une réservation ?'],
+  ]);
+
+  for (const [input, expected] of cases) {
+    const result = translateLocal(input, 'en-fr', 'restaurant');
+    assert.equal(result.hasTranslation, true, input);
+    assert.equal(result.frenchText, expected, input);
+    assert.equal(result.errorMessage, '', input);
+    assert.doesNotMatch(result.frenchText, /Mode secours local|Phrase non disponible|Phrase mal reconnue/i, input);
+  }
+});
+
+test('English listen mode blocks incoherent or unavailable phrases from main translation', () => {
+  const badRecognition = translateLocal('I would like not sons in my house', 'en-fr', 'hotel');
+  assert.equal(badRecognition.hasTranslation, false);
+  assert.equal(badRecognition.recognitionProblem, true);
+  assert.equal(badRecognition.frenchText, '');
+  assert.match(badRecognition.errorMessage, /Phrase mal reconnue|Phrase non disponible hors réseau/);
+
+  const unknown = translateLocal('This phrase is not in the offline dictionary.', 'en-fr', 'hotel');
+  assert.equal(unknown.hasTranslation, false);
+  assert.equal(unknown.recognitionProblem, false);
+  assert.equal(unknown.frenchText, '');
+  assert.equal(unknown.errorMessage, 'Phrase non disponible hors réseau. Demandez à la personne de répéter ou d’écrire la phrase.');
+
+  for (const result of [badRecognition, unknown]) {
+    assert.equal(result.canSpeak, false);
+    assert.doesNotMatch(result.frenchText, /Mode secours local|Phrase non disponible|Phrase mal reconnue/i);
+    assert.deepEqual(result.suggestions.map((suggestion) => suggestion.americanEnglishText), [
+      'Could you repeat that slowly, please?',
+      'Could you write that down, please?',
+      'I don’t understand English very well.',
+    ]);
+  }
+});

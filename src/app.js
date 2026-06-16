@@ -44,19 +44,28 @@ const replyFrenchTranslations = new Map([
   ['Can I pay by card?', 'Puis-je payer par carte ?'],
   ['Can I pay cash?', 'Puis-je payer en espèces ?'],
   ['Can we try again?', 'Pouvons-nous réessayer ?'],
+  ['Could you write that down, please?', 'Pouvez-vous l’écrire, s’il vous plaît ?'],
+  ['I don’t understand English very well.', 'Je ne comprends pas très bien l’anglais.'],
   ['Yes, here it is.', 'Oui, le voici.'],
 ]);
 
 const enToFrDictionary = [
-  [/can i see your driver[’']?s license|driver[’']?s license|driver license|driver.*license/i, 'Puis-je voir votre permis de conduire ?'],
-  [/passport|customs|border|visa|purpose/i, 'Il demande votre passeport ou des informations de douane.'],
-  [/restaurant|menu|order|check|bill|table/i, 'Il parle du menu, de votre commande ou de l’addition.'],
-  [/hotel|room|reservation|check in|luggage/i, 'Il parle de votre hôtel, de votre chambre ou de votre réservation.'],
-  [/car|rental|parking|gas|insurance/i, 'Il parle de la voiture, du parking, de l’essence ou de la location.'],
-  [/emergency|hurt|doctor|hospital|ambulance/i, 'Il s’agit peut-être d’une urgence ou d’un problème médical.'],
-  [/where|direction|subway|bus|airport|address/i, 'Il donne ou demande une direction.'],
-  [/pay|card|cash|receipt|declined|payment/i, 'Il parle du paiement, de la carte ou du reçu.'],
-  [/price|size|store|shop|return|buy/i, 'Il parle d’un achat en magasin.'],
+  [/^can i see your driver[’']?s license\??$/i, 'Puis-je voir votre permis de conduire ?'],
+  [/^can i see your passport\??$/i, 'Puis-je voir votre passeport ?'],
+  [/^do you have a reservation\??$/i, 'Avez-vous une réservation ?'],
+  [/^what[’']?s your name\??$/i, 'Quel est votre nom ?'],
+  [/^can you sign here\??$/i, 'Pouvez-vous signer ici ?'],
+  [/^would you like a receipt\??$/i, 'Voulez-vous un reçu ?'],
+  [/^cash or card\??$/i, 'Espèces ou carte ?'],
+  [/^your card was declined\.?$/i, 'Votre carte a été refusée.'],
+  [/^the tip is not included\.?$/i, 'Le pourboire n’est pas inclus.'],
+  [/^check-in is at three\.?$/i, 'L’arrivée se fait à 15 h.'],
+  [/^check-out is at eleven\.?$/i, 'Le départ se fait à 11 h.'],
+  [/^we need your id\.?$/i, 'Nous avons besoin de votre pièce d’identité.'],
+  [/^the parking lot is over there\.?$/i, 'Le parking est là-bas.'],
+  [/^the restroom is over there\.?$/i, 'Les toilettes sont là-bas.'],
+  [/^please wait here\.?$/i, 'Veuillez attendre ici.'],
+  [/^follow me,? please\.?$/i, 'Suivez-moi, s’il vous plaît.'],
 ];
 
 const parasitePrefixPatterns = [
@@ -154,6 +163,46 @@ function normalizeSuggestions(replies = []) {
   });
 }
 
+const listenUnavailableMessage = 'Phrase non disponible hors réseau. Demandez à la personne de répéter ou d’écrire la phrase.';
+const recognitionProblemMessage = 'Phrase mal reconnue. Réessayez ou demandez à la personne de parler plus lentement.';
+const rescueReplies = [
+  'Could you repeat that slowly, please?',
+  'Could you write that down, please?',
+  'I don’t understand English very well.',
+];
+
+function normalizeEnglishKey(text = '') {
+  return cleanTranslationText(text)
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/[^a-z0-9' ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasRecognitionProblem(text = '') {
+  const key = normalizeEnglishKey(text);
+  if (!key) return false;
+  return /\bnot sons\b/.test(key) || /\b(?:sons|sun|suns) in my house\b/.test(key);
+}
+function buildUnavailableEnglishTranslation(base, recognitionProblem = false) {
+  const errorMessage = recognitionProblem ? recognitionProblemMessage : listenUnavailableMessage;
+  return {
+    ...base,
+    hasTranslation: false,
+    canSpeak: false,
+    recognitionProblem,
+    error: true,
+    errorMessage,
+    message: errorMessage,
+    frenchText: '',
+    frenchMeaning: '',
+    literalEnglishText: '',
+    americanEnglishText: cleanTranslationText(base.sourceText || ''),
+    suggestions: normalizeSuggestions(rescueReplies),
+  };
+}
+
 const unavailableFallbackMessage = 'Traduction IA non connectée. Cette phrase n’est pas disponible en mode secours local.';
 
 const frToEnDictionary = new Map([
@@ -244,7 +293,7 @@ const state = { activeContext: 'restaurant', lastTranslation: '', lastAnswer: ''
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   homeScreen: $('#homeScreen'), listenPanel: $('#listenPanel'), speakPanel: $('#speakPanel'), contextGrid: $('#contextGrid'),
-  sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
+  sourceText: $('#sourceText'), micButton: $('#micButton'), translateButton: $('#translateButton'), status: $('#status'), heardEnglish: $('#heardEnglish'), translationOutput: $('#translationOutput'), listenError: $('#listenError'), copyTranslation: $('#copyTranslation'), restartListen: $('#restartListen'), replyList: $('#replyList'),
   answerText: $('#answerText'), answerFrenchOutput: $('#answerFrenchOutput'), answerMicButton: $('#answerMicButton'), translateAnswerButton: $('#translateAnswerButton'), answerStatus: $('#answerStatus'), answerListenTitle: $('#answerListenTitle'), answerOutput: $('#answerOutput'), answerError: $('#answerError'), speakAnswer: $('#speakAnswer'), copyAnswer: $('#copyAnswer'), restartSpeak: $('#restartSpeak'), updateButton: $('#updateButton'), autoSpeakToggle: $('#autoSpeakToggle'), openOfflineLibrary: $('#openOfflineLibrary'), offlinePanel: $('#offlinePanel'), backFromOffline: $('#backFromOffline'), offlineSearch: $('#offlineSearch'), offlineCategoryList: $('#offlineCategoryList'), offlinePhraseList: $('#offlinePhraseList'),
 };
 
@@ -283,19 +332,20 @@ function offlineTranslate(text, direction, context) {
   const fallbackSuggestions = normalizeSuggestions(contexts[context]?.replies || contexts.restaurant.replies);
 
   if (direction === 'en-fr') {
-    const match = enToFrDictionary.find(([pattern]) => pattern.test(text));
+    const base = { sourceText: text, sourceLanguage, targetLanguage, context, suggestions: fallbackSuggestions, mode: 'local', simulated: true };
+    const recognitionProblem = hasRecognitionProblem(text);
+    const match = !recognitionProblem ? enToFrDictionary.find(([pattern]) => pattern.test(text.trim())) : null;
+    if (!match) return buildUnavailableEnglishTranslation(base, recognitionProblem);
     return {
-      sourceText: text,
-      sourceLanguage,
-      targetLanguage,
-      frenchText: match?.[1] || 'Mode secours local : phrase anglaise détectée, traduction approximative.',
-      americanEnglishText: text,
+      ...base,
+      hasTranslation: true,
+      canSpeak: false,
+      recognitionProblem: false,
+      frenchText: match[1],
+      americanEnglishText: cleanTranslationText(text),
       literalEnglishText: text,
-      frenchMeaning: match?.[1] || 'Sens approximatif détecté localement.',
-      context,
-      suggestions: fallbackSuggestions,
-      mode: 'local',
-      simulated: true,
+      frenchMeaning: match[1],
+      errorMessage: '',
     };
   }
 
@@ -312,12 +362,21 @@ async function translateIncoming() {
   renderContexts();
   updateStatus('Je traduis…');
   const result = await requestTranslation(text, 'en-fr', state.activeContext);
-  state.lastTranslation = result.frenchText;
-  elements.heardEnglish.textContent = `🇺🇸 ${result.americanEnglishText || text}`;
-  elements.translationOutput.textContent = `🇫🇷 ${result.frenchText}`;
-  elements.copyTranslation.disabled = false;
+  const hasTranslation = result.hasTranslation === true && Boolean(result.frenchText);
+  state.lastTranslation = hasTranslation ? result.frenchText : '';
+  elements.heardEnglish.textContent = `🇺🇸 ${result.americanEnglishText || result.sourceText || text}`;
+  elements.translationOutput.classList.toggle('hidden', !hasTranslation);
+  elements.listenError.classList.toggle('hidden', hasTranslation);
+  elements.copyTranslation.disabled = !hasTranslation;
+  if (hasTranslation) {
+    elements.translationOutput.textContent = `🇫🇷 ${result.frenchText}`;
+    elements.listenError.textContent = '';
+  } else {
+    elements.translationOutput.textContent = '';
+    elements.listenError.textContent = result.errorMessage || listenUnavailableMessage;
+  }
   renderReplies(result.suggestions);
-  updateStatus(result.simulated ? 'Prêt — mode secours local.' : 'Prêt.');
+  updateStatus(hasTranslation ? (result.simulated ? 'Prêt — mode secours local.' : 'Prêt.') : (result.errorMessage || listenUnavailableMessage));
 }
 
 async function translateAnswer() {
@@ -508,6 +567,9 @@ async function copyText(text) {
 function restartListen() {
   elements.sourceText.value = '';
   elements.heardEnglish.textContent = '🇺🇸 —';
+  elements.translationOutput.classList.remove('hidden');
+  elements.listenError.classList.add('hidden');
+  elements.listenError.textContent = '';
   elements.translationOutput.textContent = '🇫🇷 La traduction apparaîtra ici.';
   elements.copyTranslation.disabled = true;
   state.lastTranslation = '';
