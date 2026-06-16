@@ -1,5 +1,6 @@
-import { findOfflinePhrase, offlineCategories, offlinePhrases } from './offlinePhrases.js';
-const CACHE_VERSION = 'us-translator-offline-v1';
+import { offlineCategories, offlinePhrases } from './offlinePhrases.js';
+import { requestTranslation as requestTranslationFromService } from './translationService.js';
+const CACHE_VERSION = 'us-translator-engine-v2';
 
 const contexts = {
   restaurant: { label: 'Restaurant', emoji: '🍽️', words: /restaurant|menu|order|coffee|food|drink|table|bill|check|tip|eat|reservation|server|waiter|restroom/i, replies: ['Could you say that again, please?', 'Can I get this one, please?', 'Can I get the check, please?'] },
@@ -203,7 +204,7 @@ function buildUnavailableEnglishTranslation(base, recognitionProblem = false) {
   };
 }
 
-const unavailableFallbackMessage = 'Traduction IA non connectée. Cette phrase n’est pas disponible en mode secours local.';
+const unavailableFallbackMessage = 'Phrase non disponible hors réseau. Essayez une phrase plus simple ou connectez l’IA.';
 
 const frToEnDictionary = new Map([
   ['bonjour j’espère que tout va bien pour vous', ['Hi, I hope you’re doing well.', 'Hi, I hope you are doing well.']],
@@ -313,46 +314,7 @@ function detectContext(text = '') {
 }
 
 async function requestTranslation(text, direction, context = state.activeContext) {
-  const languages = direction === 'fr-en' ? { source: 'fr-FR', target: 'en-US' } : { source: 'en-US', target: 'fr-FR' };
-  try {
-    const response = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, direction, context, ...languages }) });
-    if (response.ok) {
-      const payload = await response.json();
-      return { ...payload, simulated: payload.mode === 'local' };
-    }
-  } catch (error) {
-    console.info('API indisponible, utilisation du secours local.', error);
-  }
-  return offlineTranslate(text, direction, context);
-}
-
-function offlineTranslate(text, direction, context) {
-  const sourceLanguage = direction === 'fr-en' ? 'fr-FR' : 'en-US';
-  const targetLanguage = direction === 'fr-en' ? 'en-US' : 'fr-FR';
-  const fallbackSuggestions = normalizeSuggestions(contexts[context]?.replies || contexts.restaurant.replies);
-
-  if (direction === 'en-fr') {
-    const base = { sourceText: text, sourceLanguage, targetLanguage, context, suggestions: fallbackSuggestions, mode: 'local', simulated: true };
-    const recognitionProblem = hasRecognitionProblem(text);
-    const match = !recognitionProblem ? enToFrDictionary.find(([pattern]) => pattern.test(text.trim())) : null;
-    if (!match) return buildUnavailableEnglishTranslation(base, recognitionProblem);
-    return {
-      ...base,
-      hasTranslation: true,
-      canSpeak: false,
-      recognitionProblem: false,
-      frenchText: match[1],
-      americanEnglishText: cleanTranslationText(text),
-      literalEnglishText: text,
-      frenchMeaning: match[1],
-      errorMessage: '',
-    };
-  }
-
-  const base = { sourceText: text, sourceLanguage, targetLanguage, frenchText: text, frenchMeaning: text, context, suggestions: fallbackSuggestions, mode: 'local', simulated: true };
-  const offlineMatch = findOfflinePhrase(text, { category: context });
-  if (!offlineMatch) return buildUnavailableTranslation(base);
-  return buildAvailableTranslation(base, text, [offlineMatch.phrase.americanEnglishText, offlineMatch.phrase.frenchMeaning], offlineMatch);
+  return requestTranslationFromService(text, direction, context);
 }
 
 async function translateIncoming() {
