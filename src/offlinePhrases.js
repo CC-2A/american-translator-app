@@ -1441,6 +1441,99 @@ export const offlinePhrases = [
   },
 ];
 
+offlinePhrases.push(
+  {
+    id: 'hotel-bath-towels-request',
+    category: 'hotel',
+    frenchVariants: ["il me faudrait des serviettes de bain"],
+    americanEnglishText: 'Could I get some bath towels, please?',
+    frenchMeaning: 'Je voudrais des serviettes de bain, s’il vous plaît.',
+    keywords: ["hotel", "serviettes", "bain"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-clean-towels-request',
+    category: 'hotel',
+    frenchVariants: ["j’aurais besoin de serviettes propres"],
+    americanEnglishText: 'Could I get some clean towels, please?',
+    frenchMeaning: 'Je voudrais des serviettes propres, s’il vous plaît.',
+    keywords: ["hotel", "serviettes", "propres"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-out-of-toilet-paper',
+    category: 'hotel',
+    frenchVariants: ["il manque du papier toilette"],
+    americanEnglishText: 'We’re out of toilet paper.',
+    frenchMeaning: 'Il manque du papier toilette.',
+    keywords: ["hotel", "papier", "toilette"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-no-hot-water',
+    category: 'hotel',
+    frenchVariants: ["il n’y a pas d’eau chaude"],
+    americanEnglishText: 'There’s no hot water.',
+    frenchMeaning: 'Il n’y a pas d’eau chaude.',
+    keywords: ["hotel", "eau", "chaude"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-ac-not-working',
+    category: 'hotel',
+    frenchVariants: ["la climatisation ne fonctionne pas", "la climatisation ne marche pas"],
+    americanEnglishText: 'The air conditioning isn’t working.',
+    frenchMeaning: 'La climatisation ne fonctionne pas.',
+    keywords: ["hotel", "climatisation"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-heat-not-working',
+    category: 'hotel',
+    frenchVariants: ["le chauffage ne fonctionne pas"],
+    americanEnglishText: 'The heat isn’t working.',
+    frenchMeaning: 'Le chauffage ne fonctionne pas.',
+    keywords: ["hotel", "chauffage"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-change-rooms',
+    category: 'hotel',
+    frenchVariants: ["je voudrais changer de chambre"],
+    americanEnglishText: 'I’d like to change rooms.',
+    frenchMeaning: 'Je voudrais changer de chambre.',
+    keywords: ["hotel", "changer", "chambre"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-clean-room',
+    category: 'hotel',
+    frenchVariants: ["pouvez-vous nettoyer la chambre"],
+    americanEnglishText: 'Could you clean the room, please?',
+    frenchMeaning: 'Pouvez-vous nettoyer la chambre ?',
+    keywords: ["hotel", "nettoyer", "chambre"],
+    priority: 10,
+  },
+  {
+    id: 'hotel-hold-bags',
+    category: 'hotel',
+    frenchVariants: ["pouvez-vous garder mes bagages"],
+    americanEnglishText: 'Could you hold my bags, please?',
+    frenchMeaning: 'Pouvez-vous garder mes bagages ?',
+    keywords: ["hotel", "garder", "bagages"],
+    priority: 10,
+  },
+  {
+    id: 'restaurant-napkins-request',
+    category: 'restaurant',
+    frenchVariants: ["il me faudrait des serviettes"],
+    americanEnglishText: 'Could I get some napkins, please?',
+    frenchMeaning: 'Je voudrais des serviettes, s’il vous plaît.',
+    keywords: ["restaurant", "serviettes", "napkins"],
+    priority: 10,
+  },
+);
+
 export const offlineCategories = {
   restaurant: 'Restaurant',
   hotel: 'Hôtel',
@@ -1475,6 +1568,97 @@ function tokensFor(text = '') {
   return normalizeWithoutPoliteNoise(text).split(' ').filter((token) => token && !stopWords.has(token) && token.length > 1);
 }
 
+const offlineObjectDictionary = [
+  ['serviettes de bain', 'some bath towels'],
+  ['serviettes propres', 'some clean towels'],
+  ['serviettes supplementaires', 'some extra towels'],
+  ['papier toilette', 'toilet paper'],
+  ['carte de chambre', 'my key card'],
+  ['cle de chambre', 'my room key'],
+  ['seche cheveux', 'a hair dryer'],
+  ['bouteille d eau', 'a bottle of water'],
+  ['voiture de location', 'my rental car'],
+  ['permis de conduire', 'my driver’s license'],
+  ['autre taille', 'another size'],
+  ['des serviettes', { restaurant: 'some napkins', default: 'some towels' }],
+  ['serviettes', { restaurant: 'some napkins', default: 'some towels' }],
+  ['serviette', 'a towel'],
+  ['savon', 'soap'],
+  ['shampoing', 'shampoo'],
+  ['gel douche', 'body wash'],
+  ['oreillers', 'some pillows'],
+  ['oreiller', 'a pillow'],
+  ['couverture', 'a blanket'],
+  ['drap', 'a sheet'],
+  ['adaptateur', 'an adapter'],
+  ['addition', 'the check'],
+  ['menu', 'a menu'],
+  ['fourchette', 'a fork'],
+  ['couteau', 'a knife'],
+  ['cuillere', 'a spoon'],
+  ['sel', 'some salt'],
+  ['poivre', 'some pepper'],
+  ['sauce', 'some sauce'],
+  ['verre', 'a glass'],
+  ['table', 'a table'],
+  ['cles', 'the keys'],
+  ['recu', 'a receipt'],
+  ['assurance', 'insurance'],
+  ['essence', 'gas'],
+  ['parking', 'the parking lot'],
+  ['sac', 'a bag'],
+  ['remboursement', 'a refund'],
+  ['echange', 'an exchange'],
+  ['prix', 'the price'],
+  ['eau', 'some water'],
+  ['fer a repasser', 'an iron'],
+];
+
+const requestTemplatePatterns = [
+  /^il me faudrait (.+)$/,
+  /^j aurais besoin (?:de |d )?(.+)$/,
+  /^je voudrais (.+)$/,
+  /^pouvez vous me donner (.+)$/,
+  /^est ce que je peux avoir (.+)$/,
+  /^je peux avoir (.+)$/,
+];
+
+function objectEnglishFor(normalizedObject = '', category = '') {
+  const cleanedObject = normalizedObject.replace(/\b(?:s il vous plait|svp|merci)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  const match = offlineObjectDictionary.find(([french]) => cleanedObject === french || cleanedObject.includes(french));
+  if (!match) return '';
+  const english = match[1];
+  return typeof english === 'string' ? english : english[category] || english.default;
+}
+
+function buildTemplatePhrase(text = '', options = {}) {
+  const normalized = normalizeWithoutPoliteNoise(text);
+  const greetingMatch = normalizeOfflineText(text).match(/^(bonjour|salut|bonsoir)\b/);
+  for (const pattern of requestTemplatePatterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+    const objectText = objectEnglishFor(match[1], options.category);
+    if (!objectText) continue;
+    const request = `Could I get ${objectText}, please?`;
+    const americanEnglishText = greetingMatch
+      ? `${greetingMatch[1] === 'bonsoir' ? 'Good evening' : 'Hi'}, ${request.charAt(0).toLowerCase()}${request.slice(1)}`
+      : request;
+    return {
+      phrase: {
+        id: 'generated-request',
+        category: options.category || 'general',
+        frenchVariants: [text],
+        americanEnglishText,
+        frenchMeaning: `Je voudrais ${match[1]}, s’il vous plaît.`,
+        keywords: tokensFor(text),
+        priority: 10,
+      },
+      confidence: 0.94,
+    };
+  }
+  return null;
+}
+
 function phraseScore(query, phrase) {
   const normalizedQuery = normalizeOfflineText(query);
   const quietQuery = normalizeWithoutPoliteNoise(query);
@@ -1504,5 +1688,8 @@ export function findOfflinePhrase(text = '', options = {}) {
     .map((phrase) => ({ phrase, confidence: phraseScore(text, phrase) }))
     .filter((match) => match.confidence >= 0.62)
     .sort((a, b) => b.confidence - a.confidence || (b.phrase.priority || 0) - (a.phrase.priority || 0));
+  if (ranked[0]?.confidence >= 0.95 && !/^(bonjour|salut|bonsoir)\b/.test(normalizeOfflineText(text))) return ranked[0];
+  const generated = buildTemplatePhrase(text, options);
+  if (generated) return generated;
   return ranked[0] || null;
 }
